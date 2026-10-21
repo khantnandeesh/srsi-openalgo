@@ -1,0 +1,33 @@
+{
+  "settings": {
+    "product": "NRML",
+    "candle_minutes": 5,
+    "stochrsi_rsi_period": 4,
+    "stochrsi_lookback": 4,
+    "stochrsi_k_smooth": 2,
+    "stochrsi_d_smooth": 2,
+    "entry_k": 0.0,
+    "exit_k_level": 80.0,
+    "stop_loss_points": 15.0,
+    "entry_premium_min": 0.0,
+    "entry_premium_max": 10000000.0
+  },
+  "workers": [],
+  "mode": "manual",
+  "automatic": {
+    "underlying": "NIFTY",
+    "expiry_date": "19OCT26",
+    "lots": 1,
+    "candle_minutes": 5,
+    "premium_min": 100.0,
+    "premium_max": 150.0,
+    "max_levels": 15,
+    "enabled": false,
+    "enabled_ce": false,
+    "enabled_pe": false,
+    "capture_ce": "single",
+    "capture_pe": "single",
+    "capture_limit": "balance",
+    "capture_max_entries": 3
+  }
+}

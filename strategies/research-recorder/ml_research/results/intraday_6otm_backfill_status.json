@@ -1,0 +1,17 @@
+{
+  "kind": "intraday_6otm_historify_backfill",
+  "contract_count": 448,
+  "completed": 448,
+  "successes": 447,
+  "failures": 1,
+  "records": 748264,
+  "errors": [
+    {
+      "symbol": "NIFTY06OCT2623500PE",
+      "code": 500,
+      "message": "{'status': 'error', 'message': 'Historical request failed for NFO:NIFTY06OCT2623500PE 2026-08-24 to 2026-09-22 - nse_fo|40760: The read operation timed out'}"
+    }
+  ],
+  "updated_ist": "2026-10-01T23:27:20+05:30",
+  "finished": true
+}

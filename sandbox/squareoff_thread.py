@@ -161,6 +161,30 @@ def _schedule_square_off_jobs(scheduler):
     except Exception as e:
         logger.exception(f"Failed to schedule auto-reset: {e}")
 
+    # Reuse the existing Analyze scheduler for MTM and persistent intraday
+    # P&L capture. Its start/stop lifecycle already follows Analyze mode.
+    # The updater skips closed markets and records flat account balances too.
+    try:
+        from sandbox.position_manager import update_all_positions_mtm
+
+        mtm_job = scheduler.add_job(
+            func=update_all_positions_mtm,
+            trigger="interval",
+            seconds=15,
+            id="analyze_mtm_and_pnl_capture",
+            name="Analyze MTM and P&L Capture (15 seconds)",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=15,
+            timezone=IST,
+        )
+        logger.debug(
+            "  Analyze MTM/P&L Capture: Every 15 seconds (Job ID: %s)", mtm_job.id
+        )
+    except Exception:
+        logger.exception("Failed to schedule Analyze MTM and P&L capture")
+
     # Schedule daily P&L snapshot at 23:59 IST (before session boundary reset)
     # This captures the end-of-day P&L for historical reporting
     try:

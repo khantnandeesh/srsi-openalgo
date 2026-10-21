@@ -3,8 +3,8 @@
 Fund Manager - Handles simulated capital and margin calculations
 
 Features:
-- ₹10,000,000 (1 Crore) starting capital (configurable)
-- Automatic reset via APScheduler on configured day/time (default: Sunday 00:00 IST)
+- Per-account starting capital, configurable without changing other accounts
+- Persistent account balance; automatic resets are disabled by default
 - Leverage-based margin calculations
 - Real-time available balance tracking
 
@@ -107,8 +107,32 @@ class FundManager:
             # Check if reset is needed
             self._check_and_reset_funds(funds)
 
-            # Return fund details
+            # Cash remains tradeable cash: open-position MTM is never credited
+            # into it. Equity includes that MTM once, plus settled holdings value.
+            holdings = SandboxHoldings.query.filter_by(user_id=self.user_id).all()
+            holdings_cost = sum(
+                abs(Decimal(str(holding.quantity))) * Decimal(str(holding.average_price or 0))
+                for holding in holdings
+            )
+            holdings_unrealized = sum(
+                Decimal(str(holding.pnl or 0)) for holding in holdings if holding.quantity != 0
+            )
+            positions_unrealized = Decimal(str(funds.unrealized_pnl or 0))
+            total_unrealized = positions_unrealized + holdings_unrealized
+            equity = (
+                Decimal(str(funds.available_balance or 0))
+                + Decimal(str(funds.used_margin or 0))
+                + holdings_cost
+                + total_unrealized
+            )
+
+            # Return fund details, including persistent account balance.
             return {
+                "total_capital": float(funds.total_capital),
+                "equity": float(equity),
+                "account_balance": float(equity),
+                "total_unrealized_pnl": float(total_unrealized),
+                "holdings_value": float(holdings_cost + holdings_unrealized),
                 "availablecash": float(funds.available_balance),
                 "collateral": 0.00,  # No collateral in sandbox
                 "m2munrealized": float(funds.unrealized_pnl),
@@ -129,7 +153,7 @@ class FundManager:
             return None
 
     def _check_and_reset_funds(self, funds):
-        """Check if funds need to be reset (every Sunday at midnight IST)"""
+        """Honor an explicitly configured automatic reset; Never preserves funds."""
         try:
             # Check if auto-reset is disabled
             reset_day = get_config("reset_day", "Never")
@@ -166,9 +190,12 @@ class FundManager:
             try:
                 logger.info(f"Resetting funds for user {self.user_id}")
 
-                # Reset all fund values
-                funds.total_capital = self.starting_capital
-                funds.available_balance = self.starting_capital
+                # Reset this account to its own funding baseline.
+                account_capital = Decimal(str(
+                    funds.total_capital if funds.total_capital is not None else self.starting_capital
+                ))
+                funds.total_capital = account_capital
+                funds.available_balance = account_capital
                 funds.used_margin = Decimal("0.00")
                 funds.realized_pnl = Decimal("0.00")
                 funds.today_realized_pnl = Decimal("0.00")
@@ -577,6 +604,60 @@ class FundManager:
             return Decimal("1")
 
 
+def rebase_user_starting_capital(user_id, new_capital):
+    """Change one user's funding baseline without resetting trading history.
+
+    Shift available cash by that account's change in baseline. Reconstructing
+    cash from total P&L would credit unrealized gains and erase holdings cost.
+    The SQL update is restricted to this user, and shared config is untouched.
+    """
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise ValueError("An authenticated user is required")
+    new_capital = Decimal(str(new_capital))
+    if not new_capital.is_finite() or new_capital < Decimal("1000.00"):
+        raise ValueError("Starting capital must be a finite amount of at least ₹1000")
+    new_capital = new_capital.quantize(Decimal("0.01"))
+
+    with FundManager._lock:
+        try:
+            result = db_session.execute(
+                update(SandboxFunds)
+                .where(SandboxFunds.user_id == user_id)
+                .values(
+                    available_balance=(
+                        SandboxFunds.available_balance + new_capital - SandboxFunds.total_capital
+                    ),
+                    total_capital=new_capital,
+                ),
+                execution_options={"synchronize_session": False},
+            )
+            if result.rowcount == 0:
+                db_session.add(
+                    SandboxFunds(
+                        user_id=user_id,
+                        total_capital=new_capital,
+                        available_balance=new_capital,
+                        used_margin=Decimal("0.00"),
+                        realized_pnl=Decimal("0.00"),
+                        today_realized_pnl=Decimal("0.00"),
+                        unrealized_pnl=Decimal("0.00"),
+                        total_pnl=Decimal("0.00"),
+                        last_reset_date=datetime.now(pytz.timezone("Asia/Kolkata")),
+                        reset_count=0,
+                    )
+                )
+            db_session.commit()
+            db_session.expire_all()
+            logger.info(
+                f"Rebased sandbox capital for user {user_id} to ₹{new_capital}; trading history retained"
+            )
+            return True
+        except Exception:
+            db_session.rollback()
+            logger.exception(f"Could not change sandbox capital for user {user_id}")
+            return False
+
+
 def get_user_funds(user_id):
     """Helper function to get user funds"""
     fund_manager = FundManager(user_id)
@@ -595,6 +676,11 @@ def reset_all_user_funds():
     This is the scheduled auto-reset function that runs independently of user actions.
     """
     try:
+        # A scheduler job may have been loaded before reset was disabled.
+        # Recheck at execution time so it cannot erase a persistent account.
+        if str(get_config("reset_day", "Never")).lower() == "never":
+            logger.info("Scheduled fund reset skipped: automatic reset is disabled")
+            return
         logger.info("=== AUTO-RESET: Starting scheduled fund reset for all users ===")
 
         # Get all unique user IDs from funds table

@@ -148,3 +148,27 @@ docs/audit/qa_audit/**/qa_sandbox_*.csv
 docs/audit/qa_audit/**/qa_live_*.csv
 # Excel writes a ~$-prefixed lock file next to any workbook left open.
 docs/audit/qa_audit/**/~$*
+
+# ---- Private VM deployment (srsi-openalgo): never commit secrets, data or runtime state ----
+keys/
+db/
+log/
+logs/
+*.bak
+*.pem
+*.key
+*.csv.gz
+*.png
+.cloudflared/
+strategies/research-recorder/data/
+strategies/research-recorder/ml_research/**/*.csv
+strategies/scripts/historical_option_data/
+strategies/scripts/historical_backtest_results/
+strategies/scripts/state/
+strategies/backups/
+services/.whatsapp-pnl-patch-*/
+*.parquet
+
+# local test scripts with hard-coded broker credentials
+test_kotak_openalgo.py
+test_kotak_openalgo_endpoints.py

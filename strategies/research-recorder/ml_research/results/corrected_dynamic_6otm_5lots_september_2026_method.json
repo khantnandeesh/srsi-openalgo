@@ -1,0 +1,34 @@
+{
+  "period": [
+    "2026-09-01",
+    "2026-09-30"
+  ],
+  "lots": 5,
+  "quantity": 325,
+  "candle_minutes": 5,
+  "srsi": [
+    4,
+    4,
+    2,
+    2
+  ],
+  "entry": "K transitions from finite nonzero to zero; exact current rounded ATM+300 CE / ATM-300 PE",
+  "expiry_selection": "First qualifying zero-transition signal across the seven available active expiries; simultaneous signals: lowest premium, then earliest expiry, then symbol",
+  "hold": "Lock exact contract and monitor all available subsequent held-contract bars; never filter exits by spot distance",
+  "max_holdings": "One CE and one PE; independent; unresolved side blocks all future entries",
+  "cutoff": "13:30; candle-start timestamps become available one minute later",
+  "exit": "Strict 15-point stop, or K>=80 at price>=entry, or 15:25 research square-off",
+  "premium_band": "Unrestricted positive premium, as original dynamic test",
+  "fees": "Same prior proxy, quantity325 and STT0.15%; 1-point sell slippage separately",
+  "limitations": [
+    "1m OHLCV proxy, no actual 1sec/tick data or five-second limit-fill simulation",
+    "Sparse candles can conceal intervening stop/indicator events",
+    "Stop within a minute is assumed before the minute-close SRSI signal",
+    "No backward/forward spot fill for entries",
+    "No inferred/reconstructed prices for missing bars",
+    "P&L is realized subset only if unresolved_trades>0",
+    "Cached indicator calculation finalizes the last available sampled close of each interval"
+  ],
+  "cache": "expiry_locked_6otm_5lots_bars.parquet",
+  "legacy_profit": "Original +98298 result is invalid; diagnostic comparison only"
+}

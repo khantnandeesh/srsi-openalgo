@@ -71,28 +71,32 @@ def get_margin_data(auth_token):
 
         # Process and return the margin data.
         #
-        # "availablecash" is cash only. Collateral is reported as its own field,
-        # so folding it into availablecash double-counts (issue #1582 -- same bug
-        # class fixed for other brokers there, never touched here).
-        #
-        # Kotak's cash-balance field in /quick/user/limits is "CollateralValue"
-        # -- misleadingly named: it does NOT track pledged collateral. Verified on
-        # a real account before and after pledging two holdings: CollateralValue
-        # stayed on cash (179542.8 both times), "Collateral" carried the
-        # pledged-shares margin (0 -> 222565.5), and "Net" == CollateralValue +
-        # Collateral - MarginUsed (179542.8 + 222565.5 - 0.2 = 402108.1, matching
-        # the Kotak app's "Available margin"). "RmsPayInAmt - RmsPayOutAmt" is
-        # only the current day's fund pay-in/pay-out delta -- 0 unless the account
-        # was funded that same day -- so it is not a cash source either.
-        cash = float(margin_data.get("CollateralValue", 0))
-        collateral = float(margin_data.get("Collateral", 0))
+        # Kotak's margin fields in /quick/user/limits:
+        # - "CollateralValue": Settled cash balance carried forward from previous days
+        # - "RmsPayInAmt": Today's fund pay-in (newly added funds)
+        # - "RmsPayOutAmt": Today's fund pay-out (withdrawn funds)
+        # - "Collateral": Pledged collateral / shares value
+        # - "Net": Total net available margin
+        # - "MarginUsed": Blocked margin for orders/positions
+        collateral_val = float(margin_data.get("CollateralValue", 0) or 0)
+        pay_in = float(margin_data.get("RmsPayInAmt", 0) or 0)
+        pay_out = float(margin_data.get("RmsPayOutAmt", 0) or 0)
+        collateral = float(margin_data.get("Collateral", 0) or 0)
+        net_val = float(margin_data.get("Net", 0) or 0)
+        margin_used = float(margin_data.get("MarginUsed", 0) or 0)
+
+        # Cash balance is prior day balance + today's pay-in - today's pay-out.
+        # Fallback to (Net - Collateral + MarginUsed) if direct cash fields are 0.
+        direct_cash = collateral_val + pay_in - pay_out
+        derived_cash = max(0.0, net_val - collateral + margin_used)
+        cash = max(direct_cash, derived_cash) if direct_cash <= 0 else direct_cash
 
         processed_margin_data = {
             "availablecash": f"{cash:.2f}",
             "collateral": f"{collateral:.2f}",
-            "m2munrealized": f"{float(margin_data.get('UnrealizedMtomPrsnt', 0)):.2f}",
-            "m2mrealized": f"{float(margin_data.get('RealizedMtomPrsnt', 0)):.2f}",
-            "utiliseddebits": f"{float(margin_data.get('MarginUsed', 0)):.2f}",
+            "m2munrealized": f"{float(margin_data.get('UnrealizedMtomPrsnt', 0) or 0):.2f}",
+            "m2mrealized": f"{float(margin_data.get('RealizedMtomPrsnt', 0) or 0):.2f}",
+            "utiliseddebits": f"{margin_used:.2f}",
         }
 
         logger.info(f"Successfully fetched margin data: {processed_margin_data}")

@@ -209,6 +209,24 @@ def test_chart():
 def get_pnl_data():
     """Get intraday PnL data."""
     try:
+        # Analyze history comes from the persistent sandbox ledger. It does
+        # not require a current broker token to review a previous trading day.
+        from database.settings_db import get_analyze_mode
+
+        if get_analyze_mode():
+            from services.sandbox_pnl_history_service import get_pnl_history
+
+            ist = pytz.timezone("Asia/Kolkata")
+            today = datetime.now(ist).date().isoformat()
+            payload = request.get_json(silent=True) or {}
+            start_date = request.args.get("start_date") or payload.get("start_date") or today
+            end_date = request.args.get("end_date") or payload.get("end_date") or today
+            try:
+                data = get_pnl_history(session["user"], start_date, end_date)
+            except ValueError as exc:
+                return jsonify({"status": "error", "message": str(exc)}), 400
+            return jsonify({"status": "success", "data": data}), 200
+
         broker = session.get("broker")
         if not broker:
             logger.error("Broker not set in session")

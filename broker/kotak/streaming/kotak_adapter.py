@@ -250,6 +250,13 @@ class KotakWebSocketAdapter(BaseBrokerWebSocketAdapter):
             # Extract key identifiers - following AliceBlue pattern
             token = str(parsed_data.get("tk", ""))
             broker_exchange = parsed_data.get("e", "UNKNOWN")
+            # SFeed index packets carry a generated numeric id; use their name
+            # to resolve the original named subscription.
+            index_key = (broker_exchange, parsed_data.get("ts", ""))
+            with self._lock:
+                if index_key in self._kotak_to_openalgo and self._kotak_to_openalgo[index_key][0] in {"NSE_INDEX", "BSE_INDEX"}:
+                    token = str(index_key[1])
+                    parsed_data["tk"] = token
             ltp = parsed_data.get("ltp")
 
             # **CRITICAL FIX**: Check if this is depth data (has bids/asks) or LTP data
@@ -1056,6 +1063,13 @@ class KotakWebSocketAdapter(BaseBrokerWebSocketAdapter):
 
             kotak_exchange = get_kotak_exchange(exchange)
             token = get_token(symbol, exchange)
+            if exchange in {"NSE_INDEX", "BSE_INDEX"} and isinstance(self._ws_client, KotakSFeedWebSocket):
+                # SFeed indices subscribe by name, not the master numeric token.
+                names = {"NIFTY": "Nifty 50", "NIFTY50": "Nifty 50", "BANKNIFTY": "Nifty Bank",
+                         "FINNIFTY": "Nifty Fin Service", "MIDCPNIFTY": "Nifty Mid Select",
+                         "NIFTYNXT50": "Nifty Next 50", "INDIAVIX": "India VIX",
+                         "SENSEX": "SENSEX", "BANKEX": "BANKEX"}
+                token = names.get(symbol.upper(), symbol)
 
             if not token:
                 logger.error(f"No token found for {symbol} on {exchange}")
@@ -1082,7 +1096,8 @@ class KotakWebSocketAdapter(BaseBrokerWebSocketAdapter):
                 return False
 
             # Enqueue for batched dispatch — flushed by _process_batch_subscriptions.
-            self._enqueue_subscription(kotak_exchange, token, sub_type="mws")
+            quote_type = "ifs" if exchange in {"NSE_INDEX", "BSE_INDEX"} else "mws"
+            self._enqueue_subscription(kotak_exchange, token, sub_type=quote_type)
             logger.debug(
                 f"Queued quote subscription: {exchange}:{symbol} "
                 f"(kotak: {kotak_exchange}|{token})"
@@ -1105,6 +1120,13 @@ class KotakWebSocketAdapter(BaseBrokerWebSocketAdapter):
 
             kotak_exchange = get_kotak_exchange(exchange)
             token = get_token(symbol, exchange)
+            if exchange in {"NSE_INDEX", "BSE_INDEX"} and isinstance(self._ws_client, KotakSFeedWebSocket):
+                # SFeed indices subscribe by name, not the master numeric token.
+                names = {"NIFTY": "Nifty 50", "NIFTY50": "Nifty 50", "BANKNIFTY": "Nifty Bank",
+                         "FINNIFTY": "Nifty Fin Service", "MIDCPNIFTY": "Nifty Mid Select",
+                         "NIFTYNXT50": "Nifty Next 50", "INDIAVIX": "India VIX",
+                         "SENSEX": "SENSEX", "BANKEX": "BANKEX"}
+                token = names.get(symbol.upper(), symbol)
 
             if not token:
                 logger.error(f"No token found for {symbol} on {exchange}")
@@ -1138,7 +1160,8 @@ class KotakWebSocketAdapter(BaseBrokerWebSocketAdapter):
             # Enqueue outside lock — batched by _process_batch_subscriptions,
             # so tearing down a large watchlist costs one frame, not one each.
             if should_unsub_broker:
-                self._enqueue_subscription(kotak_exchange, token, sub_type="mwu")
+                quote_type = "ifu" if exchange in {"NSE_INDEX", "BSE_INDEX"} else "mwu"
+                self._enqueue_subscription(kotak_exchange, token, sub_type=quote_type)
                 logger.debug(f"Queued broker unsubscribe: {exchange}:{symbol}")
 
         except Exception as e:

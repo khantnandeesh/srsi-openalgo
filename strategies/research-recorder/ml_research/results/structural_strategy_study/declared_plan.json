@@ -1,0 +1,32 @@
+{
+  "declared_at_utc": "2026-10-02T14:51:27.049271+00:00",
+  "rules": [
+    {
+      "id": "adx_recovery20",
+      "description": "Completed5m spotADX14>=25,+DI/-DIdirection;optionKcrossabove20afterK<=5in15min",
+      "max_trades": 3
+    },
+    {
+      "id": "opening_range_breakout",
+      "description": "Frozen09:15-09:45spotrange;firstqualifying1mclosebreakoutperdirection/day",
+      "max_trades": 1
+    },
+    {
+      "id": "squeeze_breakout",
+      "description": "Lastcompleted5mBB20,2populationSTDbandwidth<=prior100bar20thpercentile;1mclosebandcross",
+      "max_trades": 3
+    }
+  ],
+  "universe": "Nearestarchivedexpiryexcludingexpiryday;premium80..150;OTMoffset0..6;selectclosest115BEFOREsignalcheck",
+  "selection": "RequirepositivenetdevSep1-11andvalSep15-18;>=10dev/5valtrades;zero unresolved;maxexitstaleness<=2min;freezehighestminimummeandailynet",
+  "option_atr": "OpenAlgoATR14onfullcontractcompleted5mbars;>=4minuteobservationsandlastminuteendingexactlyatbucketend;featureasof<=signal",
+  "exits": "R=clip(1.5*ATR,7,15);target2R;60minuteholdingor15:25earlier;stopcheckedfirst;breakevenfromnextbarafterminuteclose>=entry+R",
+  "execution": "5lots325units,nextminuteopen+0.25buy-slip,-1sell-slip;missingnextopenanddeadlinepricesflaggedlastcloseassumptions;5mincooldown",
+  "warning": "ALLdatesarealreadyexposedexploratoryretrospectiveobservations;noneisgenuineuntouchedholdout;no tickqueue/5secondlimitfillverification;missingbarsexitpathrisk",
+  "periods": {
+    "development": "2026-09-01..11",
+    "validation": "2026-09-15..18",
+    "later_retrospective": "2026-09-21..24",
+    "additional_day": "2026-10-01"
+  }
+}

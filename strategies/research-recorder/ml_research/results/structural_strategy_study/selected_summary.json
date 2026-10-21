@@ -1,0 +1,150 @@
+{
+  "selected_rule": {
+    "id": "opening_range_breakout",
+    "description": "Frozen09:15-09:45spotrange;firstqualifying1mclosebreakoutperdirection/day",
+    "max_trades": 1
+  },
+  "passed_development_validation": false,
+  "candidate_count": 3,
+  "results": {
+    "development": {
+      "trades": 7,
+      "days": 9,
+      "raw_gross_pnl": -4367.264932309983,
+      "net_pnl": -8179.398284054465,
+      "mean_daily_net": -908.8220315616072,
+      "max_daily_drawdown": 13081.943038664469,
+      "positive_days": 2,
+      "negative_days": 4,
+      "win_rate": 0.2857142857142857,
+      "assumed_entries": 0,
+      "assumed_exits": 0,
+      "gap_affected_trades": 3,
+      "max_exit_staleness_minutes": 0.0,
+      "unresolved": 0,
+      "stop_target_ambiguous": 0,
+      "breakeven_stops": 1
+    },
+    "validation": {
+      "trades": 3,
+      "days": 4,
+      "raw_gross_pnl": 263.14065440232434,
+      "net_pnl": -1363.3652252996717,
+      "mean_daily_net": -340.8413063249179,
+      "max_daily_drawdown": 8902.178288145318,
+      "positive_days": 1,
+      "negative_days": 2,
+      "win_rate": 0.3333333333333333,
+      "assumed_entries": 0,
+      "assumed_exits": 0,
+      "gap_affected_trades": 0,
+      "max_exit_staleness_minutes": 0.0,
+      "unresolved": 0,
+      "stop_target_ambiguous": 0,
+      "breakeven_stops": 0
+    },
+    "later_retrospective": {
+      "trades": 4,
+      "days": 4,
+      "raw_gross_pnl": 4368.4156433692215,
+      "net_pnl": 2197.0983451765615,
+      "mean_daily_net": 549.2745862941404,
+      "max_daily_drawdown": 4639.295997044775,
+      "positive_days": 3,
+      "negative_days": 1,
+      "win_rate": 0.75,
+      "assumed_entries": 0,
+      "assumed_exits": 0,
+      "gap_affected_trades": 0,
+      "max_exit_staleness_minutes": 0.0,
+      "unresolved": 0,
+      "stop_target_ambiguous": 0,
+      "breakeven_stops": 0
+    },
+    "additional_day": {
+      "trades": 2,
+      "days": 1,
+      "raw_gross_pnl": -9346.506452819936,
+      "net_pnl": -10414.393895846722,
+      "mean_daily_net": -10414.393895846722,
+      "max_daily_drawdown": 10414.393895846722,
+      "positive_days": 0,
+      "negative_days": 1,
+      "win_rate": 0.0,
+      "assumed_entries": 0,
+      "assumed_exits": 0,
+      "gap_affected_trades": 0,
+      "max_exit_staleness_minutes": 0.0,
+      "unresolved": 0,
+      "stop_target_ambiguous": 0,
+      "breakeven_stops": 0
+    },
+    "later_sellslip2": {
+      "trades": 6,
+      "days": 5,
+      "raw_gross_pnl": -4978.090809450715,
+      "net_pnl": -10163.550704370158,
+      "mean_daily_net": -2032.7101408740316,
+      "max_daily_drawdown": 16026.817469741494,
+      "positive_days": 3,
+      "negative_days": 2,
+      "win_rate": 0.5,
+      "assumed_entries": 0,
+      "assumed_exits": 0,
+      "gap_affected_trades": 0,
+      "max_exit_staleness_minutes": 0.0,
+      "unresolved": 0,
+      "stop_target_ambiguous": 0,
+      "breakeven_stops": 0
+    },
+    "later_delay1m": {
+      "trades": 6,
+      "days": 5,
+      "raw_gross_pnl": 11296.428549009095,
+      "net_pnl": 8034.676680210007,
+      "mean_daily_net": 1606.9353360420014,
+      "max_daily_drawdown": 4636.907347534774,
+      "positive_days": 4,
+      "negative_days": 1,
+      "win_rate": 0.6666666666666666,
+      "assumed_entries": 0,
+      "assumed_exits": 0,
+      "gap_affected_trades": 0,
+      "max_exit_staleness_minutes": 0.0,
+      "unresolved": 0,
+      "stop_target_ambiguous": 0,
+      "breakeven_stops": 0
+    }
+  },
+  "period_days": {
+    "development": [
+      "2026-09-01",
+      "2026-09-02",
+      "2026-09-03",
+      "2026-09-04",
+      "2026-09-07",
+      "2026-09-08",
+      "2026-09-09",
+      "2026-09-10",
+      "2026-09-11"
+    ],
+    "validation": [
+      "2026-09-15",
+      "2026-09-16",
+      "2026-09-17",
+      "2026-09-18"
+    ],
+    "later_retrospective": [
+      "2026-09-21",
+      "2026-09-22",
+      "2026-09-23",
+      "2026-09-24"
+    ],
+    "additional_day": [
+      "2026-10-01"
+    ]
+  },
+  "raw_option_bars": 882094,
+  "option_symbols": 343,
+  "warning": "ALLdatesarealreadyexposedexploratoryretrospectiveobservations;noneisgenuineuntouchedholdout;no tickqueue/5secondlimitfillverification;missingbarsexitpathrisk"
+}

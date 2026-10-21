@@ -193,21 +193,21 @@ def api_get_websocket_config():
         ), 401
 
     import os
-
     from flask import request
 
-    websocket_url = os.getenv("WEBSOCKET_URL", "ws://localhost:8765")
+    is_https = request.is_secure or request.headers.get("X-Forwarded-Proto") == "https"
+    host = request.headers.get("Host", request.host)
 
-    # If the current request is HTTPS and the WebSocket URL is WS, upgrade to WSS
-    if request.is_secure and websocket_url.startswith("ws://"):
-        websocket_url = websocket_url.replace("ws://", "wss://")
-        logger.info(f"Upgraded WebSocket URL to secure: {websocket_url}")
+    if is_https:
+        websocket_url = f"wss://{host}/ws"
+    else:
+        websocket_url = f"ws://{host}/ws"
 
     return jsonify(
         {
             "status": "success",
             "websocket_url": websocket_url,
-            "is_secure": request.is_secure,
+            "is_secure": is_https,
             "original_url": os.getenv("WEBSOCKET_URL", "ws://localhost:8765"),
         }
     ), 200

@@ -1,0 +1,27 @@
+{
+  "expiry": "06OCT26",
+  "lots": 5,
+  "quantity": 325,
+  "candle_minutes": 5,
+  "srsi": [
+    4,
+    4,
+    2,
+    2
+  ],
+  "entry": "K transitions into zero",
+  "entry_cutoff": "13:30",
+  "exit": "K>=80 and price>=entry, or strict 15 point stop",
+  "end_of_day": "15:25 research square off",
+  "sampling": "1m close proxy",
+  "corrections": [
+    "full held-contract path retained",
+    "exact spot timestamp mapping",
+    "true previous symbol indicator sample",
+    "ATM rounded half up",
+    "close-derived signal known at next minute",
+    "unresolved trades retained"
+  ],
+  "previous_39252_and_98298_results": "Use defective filtered exit helper; unvalidated.",
+  "gap_affected_corrected_trades": 54
+}

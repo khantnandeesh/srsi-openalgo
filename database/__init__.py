@@ -166,6 +166,7 @@ def _set_sqlite_pragmas(dbapi_connection, connection_record):
     """Apply WAL + synchronous=NORMAL + busy_timeout to every SQLite connection."""
     if not isinstance(dbapi_connection, sqlite3.Connection):
         return
+    dbapi_connection.text_factory = lambda x: str(x, 'utf-8', 'ignore')
     cursor = dbapi_connection.cursor()
     try:
         # A pragma failure must never break the connection: if another

@@ -1,0 +1,77 @@
+{
+  "hypotheses": [
+    {
+      "id": "srsi_zero",
+      "signal": "zero",
+      "trend": false,
+      "exit": "srsi"
+    },
+    {
+      "id": "recovery5",
+      "signal": "recovery5",
+      "trend": false,
+      "exit": "srsi"
+    },
+    {
+      "id": "recovery20",
+      "signal": "recovery20",
+      "trend": false,
+      "exit": "srsi"
+    },
+    {
+      "id": "trend_recovery5",
+      "signal": "recovery5",
+      "trend": true,
+      "exit": "srsi"
+    },
+    {
+      "id": "trend_recovery20",
+      "signal": "recovery20",
+      "trend": true,
+      "exit": "srsi"
+    },
+    {
+      "id": "trend_recovery_target",
+      "signal": "recovery20",
+      "trend": true,
+      "exit": "target"
+    },
+    {
+      "id": "spot_breakout",
+      "signal": "breakout",
+      "trend": true,
+      "exit": "target"
+    },
+    {
+      "id": "trend_pullback",
+      "signal": "pullback",
+      "trend": true,
+      "exit": "target"
+    }
+  ],
+  "declared_at_utc": "2026-10-02T14:51:27.048547+00:00",
+  "universe": "Nearest archived unexpired expiry excluding expiry day, positive premium80..150, OTM offsets0..6, select closest premium115",
+  "option_liquidity": "Positive current volume, at least9observations and325units in prior10elapsedminutes",
+  "indicators": "5m provisional OpenAlgo-equivalent StochRSI4,4,2,2; completed5m spotEMA20slope; previous12completed5m range",
+  "entries": "Signals at1mclose; nextminuteopen+0.25point; missingnextopen flagged signalclose assumption",
+  "exits": "Strict15point stop; SRSI>=80at>=entry or target30point/30minmaxhold; daily15:25exit",
+  "limits": "5fixedlots325units; max3trades per CE/PE side/day;5mincooldown; lock exact contract",
+  "costs": "20brokerage/order; NSEtransactionproxy0.03553%,STT0.15%sales,SEBI0.0001%,GST18%,stamp0.003%buys;1point sellslip",
+  "periods": {
+    "development": [
+      "2026-09-01",
+      "2026-09-11"
+    ],
+    "validation": [
+      "2026-09-15",
+      "2026-09-18"
+    ],
+    "retrospective_evaluation": [
+      "2026-09-21",
+      "2026-09-24"
+    ],
+    "additional_day": "2026-10-01"
+  },
+  "selection": "Require positive development andvalidation, >=10/5trades respectively, no unresolved exits; choose largest minimum mean daily net; freeze before evaluation",
+  "warning": "Septemberevaluation dates have been used in priorresearch; not a truly untouched holdout. October1is onlyone additionalday, insufficient to establish live profitability."
+}

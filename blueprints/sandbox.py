@@ -36,6 +36,19 @@ def ratelimit_handler(e):
     ), 429
 
 
+def _account_capital_configs(configs):
+    """Display this signed-in account's funding baseline instead of shared defaults."""
+    configs = dict(configs)
+    user_id = session.get("user")
+    fund = SandboxFunds.query.filter_by(user_id=user_id).first() if user_id else None
+    if fund is not None:
+        configs["starting_capital"] = {
+            "value": str(fund.total_capital),
+            "description": "Starting capital for your Analyze account; trading history is retained",
+        }
+    return configs
+
+
 @sandbox_bp.route("/")
 @check_session_validity
 @limiter.limit(API_RATE_LIMIT)
@@ -43,7 +56,7 @@ def sandbox_config():
     """Render the sandbox configuration page"""
     try:
         # Get all current configuration values
-        configs = get_all_configs()
+        configs = _account_capital_configs(get_all_configs())
 
         # Organize configs into categories for better UI presentation
         organized_configs = {
@@ -97,7 +110,7 @@ def api_get_configs():
     """API endpoint to get all sandbox configuration values as JSON"""
     try:
         # Get all current configuration values
-        configs = get_all_configs()
+        configs = _account_capital_configs(get_all_configs())
 
         # Default values to use if config not in database
         defaults = {
@@ -226,37 +239,20 @@ def update_config():
         if validation_error:
             return jsonify({"status": "error", "message": validation_error}), 400
 
-        # Update the configuration
-        success = set_config(config_key, config_value)
+        # A capital change adjusts only this authenticated account's funding;
+        # shared defaults, realized P&L and historical data are preserved.
+        if config_key == "starting_capital":
+            from sandbox.fund_manager import rebase_user_starting_capital
+
+            user_id = session.get("user")
+            if not user_id:
+                return jsonify({"status": "error", "message": "Authentication required"}), 401
+            success = rebase_user_starting_capital(user_id, config_value)
+        else:
+            success = set_config(config_key, config_value)
 
         if success:
             logger.info(f"Sandbox config updated: {config_key} = {config_value}")
-
-            # If starting_capital was updated, update all user funds immediately
-            if config_key == "starting_capital":
-                try:
-                    from decimal import Decimal
-
-                    from database.sandbox_db import SandboxFunds, db_session
-
-                    new_capital = Decimal(str(config_value))
-
-                    # Update all user funds with new starting capital
-                    # This resets their balance to the new capital value
-                    funds = SandboxFunds.query.all()
-                    for fund in funds:
-                        # Calculate what the new available balance should be
-                        # New available = new_capital - used_margin + total_pnl
-                        fund.total_capital = new_capital
-                        fund.available_balance = new_capital - fund.used_margin + fund.total_pnl
-
-                    db_session.commit()
-                    logger.info(
-                        f"Updated {len(funds)} user funds with new starting capital: ₹{new_capital}"
-                    )
-                except Exception as e:
-                    logger.exception(f"Error updating user funds with new capital: {e}")
-                    db_session.rollback()
 
             # If square-off time was updated, reload the schedule automatically
             if config_key.endswith("square_off_time"):
@@ -313,9 +309,17 @@ def reset_config():
     try:
         user_id = session.get("user")
 
+        # An explicit reset uses this account's baseline and leaves shared
+        # starting-capital configuration unchanged.
+        existing_fund = SandboxFunds.query.filter_by(user_id=user_id).first()
+        account_capital = (
+            str(existing_fund.total_capital)
+            if existing_fund is not None
+            else get_config("starting_capital", "10000000.00")
+        )
         # Default configurations
         default_configs = {
-            "starting_capital": "10000000.00",
+            "starting_capital": account_capital,
             "reset_day": "Never",
             "reset_time": "00:00",
             "order_check_interval": "5",
@@ -333,7 +337,8 @@ def reset_config():
 
         # Reset all configurations
         for key, value in default_configs.items():
-            set_config(key, value)
+            if key != "starting_capital":
+                set_config(key, value)
 
         # Clear all sandbox data for the current user
         try:
@@ -354,10 +359,12 @@ def reset_config():
             logger.info(f"Deleted {deleted_holdings} sandbox holdings for user {user_id}")
 
             # Delete all daily P&L history
-            from database.sandbox_db import SandboxDailyPnL
+            from database.sandbox_db import SandboxDailyPnL, SandboxPnLSnapshot
 
             deleted_daily_pnl = SandboxDailyPnL.query.filter_by(user_id=user_id).delete()
             logger.info(f"Deleted {deleted_daily_pnl} daily P&L records for user {user_id}")
+            deleted_snapshots = SandboxPnLSnapshot.query.filter_by(user_id=user_id).delete()
+            logger.info(f"Deleted {deleted_snapshots} P&L snapshots for user {user_id}")
 
             # Reset funds to starting capital
             from datetime import datetime
@@ -826,10 +833,10 @@ def validate_config(config_key, config_value):
 
                 # Additional validations
                 if config_key == "starting_capital":
-                    valid_capitals = [100000, 500000, 1000000, 2500000, 5000000, 10000000]
+                    valid_capitals = [50000, 100000, 500000, 1000000, 2500000, 5000000, 10000000]
                     if value not in valid_capitals:
                         return (
-                            "Starting capital must be one of: ₹1L, ₹5L, ₹10L, ₹25L, ₹50L, or ₹1Cr"
+                            "Starting capital must be one of: ₹50,000, ₹1L, ₹5L, ₹10L, ₹25L, ₹50L, or ₹1Cr"
                         )
 
                 if config_key.endswith("_leverage"):

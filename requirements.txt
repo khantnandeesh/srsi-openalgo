@@ -148,3 +148,4 @@ zipp==3.23.1
 # Portfolio analytics for the Portfolio Backtester (metrics + tearsheets).
 # Pure-NumPy kernels -- no Numba, so nothing pins numpy's upper bound.
 openstatz==0.4.1
+litellm==1.99.0

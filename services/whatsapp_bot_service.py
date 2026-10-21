@@ -82,6 +82,8 @@ import threading
 import time
 from collections.abc import Callable
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
+from zoneinfo import ZoneInfo
 from typing import Any
 
 from database.whatsapp_db import (
@@ -1102,13 +1104,15 @@ class WhatsAppBotService:
                 "No API key on file for the owner. Generate one at /apikey "
                 "on the web UI, then try again."
             )
-        host_url = os.getenv("HOST_SERVER", "http://127.0.0.1:5000")
+        # HOST_SERVER is the public URL and can retain an obsolete VM address.
+        # Bot commands run on this VM; use the local API unless explicitly overridden.
+        host_url = os.getenv("WHATSAPP_API_HOST", "http://127.0.0.1:5000")
         try:
             from openalgo import api as openalgo_api  # type: ignore
         except Exception:
             return None, "openalgo SDK not available on this server."
         try:
-            return openalgo_api(api_key=api_key, host=host_url), None
+            return openalgo_api(api_key=api_key, host=host_url, timeout=20.0), None
         except Exception as e:
             logger.exception("Failed to create openalgo client")
             return None, f"SDK error: {e}"
@@ -1174,21 +1178,69 @@ class WhatsAppBotService:
         except Exception as e:
             self.send_sync(chat, f"Failed to fetch funds: {e}")
 
+    @staticmethod
+    def _format_pnl_summary(response: dict[str, Any]) -> str:
+        if not isinstance(response, dict) or response.get("status") != "success":
+            raise ValueError("Position request did not succeed")
+        rows = response.get("data")
+        if isinstance(rows, dict):
+            rows = rows.get("positions")
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise ValueError("Unexpected position response")
+
+        def number(value):
+            try:
+                result = Decimal(str(value))
+            except (InvalidOperation, ValueError, TypeError):
+                raise ValueError("Missing or invalid P&L value") from None
+            if not result.is_finite():
+                raise ValueError("Invalid P&L value")
+            return result
+
+        values = [number(row.get("pnl")) for row in rows]
+        quantities = [number(row.get("quantity")) for row in rows]
+        total = number(response["total_pnl_today"]) if "total_pnl_today" in response else sum(values, Decimal(0))
+        analyzed = response.get("mode") == "analyze"
+        timestamp = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d %b %Y · %I:%M %p IST")
+        money = lambda value: f"₹{value:,.2f}"
+        lines = ["*P&L summary*", "Analyze · Today" if analyzed else "Live · Position P&L", timestamp,
+                 "", f"*Total: {money(total)}*"]
+        if "total_today_realized_pnl" in response:
+            lines.append("Realized today: " + money(number(response["total_today_realized_pnl"])))
+        if "total_unrealized_pnl" in response:
+            lines.append("Unrealized: " + money(number(response["total_unrealized_pnl"])))
+        lines.append("Open positions: " + str(sum(quantity != 0 for quantity in quantities)))
+        if not rows:
+            lines.append("No positions reported.")
+        else:
+            lines.append("")
+            # Aggregate every row; only limit the symbol breakdown for WhatsApp readability.
+            for row, value, quantity in list(zip(rows, values, quantities))[:12]:
+                symbol = str(row.get("symbol", "Unknown"))
+                state = "Closed" if quantity == 0 else f"Qty {quantity:g}"
+                lines.append(f"{symbol} · {state} · {money(value)}")
+            if len(rows) > 12:
+                lines.append(f"+ {len(rows) - 12} more positions included in total")
+        return "\n".join(lines)
+
     def _cmd_pnl(self, wa, msg, chat, sender_jid, args) -> None:
         client, err = self._sdk_client(sender_jid)
         if err:
             self.send_sync(chat, err)
             return
         try:
-            # The SDK exposes a per-symbol P&L via the pnl namespace; fall
-            # back to positionbook aggregate if it's not present.
-            if hasattr(client, "pnl"):
-                resp = client.pnl()
-            else:
-                resp = client.positionbook()
-            self._send_truncated(chat, "P&L", resp)
-        except Exception as e:
-            self.send_sync(chat, f"Failed to fetch P&L: {e}")
+            response = client.positionbook()
+            if not isinstance(response, dict) or response.get("status") != "success":
+                logger.warning("WhatsApp /pnl position request failed; code=%s",
+                               response.get("code", "unknown") if isinstance(response, dict) else "invalid_response")
+                self.send_sync(chat, "P&L is unavailable right now. Check your broker connection and try /pnl again.")
+                return
+            summary = self._format_pnl_summary(response)
+        except Exception:
+            logger.exception("WhatsApp /pnl summary could not be generated")
+            self.send_sync(chat, "Could not load the P&L summary. Try /pnl again shortly.")
+            return
+        self.send_sync(chat, summary)
 
     def _cmd_quote(self, wa, msg, chat, sender_jid, args) -> None:
         if not args:

@@ -1,0 +1,28 @@
+[Unit]
+Description=OpenAlgo NIFTY options research data recorder
+After=network-online.target openalgo.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/openalgo/strategies/research-recorder
+ExecStart=/home/ubuntu/openalgo/venv/bin/python -u /home/ubuntu/openalgo/strategies/research-recorder/research_recorder.py
+Restart=on-failure
+RestartSec=20
+StartLimitIntervalSec=300
+StartLimitBurst=5
+Nice=5
+CPUQuota=50%
+MemoryMax=512M
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=openalgo-research-recorder
+
+[Install]
+WantedBy=multi-user.target

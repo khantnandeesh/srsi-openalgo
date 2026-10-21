@@ -1,0 +1,20 @@
+{
+  "expiry": "29SEP26",
+  "quantity": 325,
+  "lots": 5,
+  "width_points": 100.0,
+  "short_strike": "ATM+300 CE bearish trend; ATM-300 PE bullish trend; hedge 100 further OTM",
+  "trend": "NIFTY latest fully observed completed 5m close vs EMA20 and EMA20 slope; both agree",
+  "second_variant": "trend plus current short-option 5m provisional K<80 and preceding minute K>=80",
+  "entry_window": "10:00 inclusive to 13:00 exclusive IST",
+  "entry": "next minute paired opens after signal; missing paired open retained unresolved with day halted",
+  "prior_liquidity": "both legs >=9 positive-volume observed bars in preceding 10 minutes inclusive latest completed minute",
+  "exit": "synchronized minute close at 50% initial-credit profit or 100% credit loss, max 30 elapsed minutes",
+  "spread_extrema": "not constructed; only synchronized observed closes",
+  "slippage": "1 point adverse per leg on entry and exit =4 points per spread round trip",
+  "fees": "brokerage20/order x4, transaction0.03553%, SEBI0.0001%, stamp0.003%buy, STT0.15%sales, GST18%brokerage+transaction+SEBI",
+  "selection": "two predeclared variants; train Sep1-11, validation Sep15-18; winner frozen before test Sep21-24",
+  "limitation": "retrospective dates previously seen in other research, not pristine untouched holdout",
+  "no_future_drop": "entry chosen without future path checks; missing paths retained unresolved",
+  "position_limit": "one spread open, max2/day, fixed5lots, no averaging"
+}

@@ -1,0 +1,134 @@
+{
+  "audit": {
+    "rows": 1564210,
+    "option_symbols": 971,
+    "pinned_expiry": "",
+    "spot_days": 21,
+    "start": "2026-08-24 09:15:00+05:30",
+    "end": "2026-09-30 15:39:00+05:30",
+    "lot_units_assumption": 65,
+    "current_master_lot_sizes": [
+      65
+    ],
+    "expiries": [
+      "2026-09-22",
+      "2026-09-29",
+      "2026-10-06",
+      "2026-10-13",
+      "2026-10-19",
+      "2026-10-27",
+      "2026-11-03",
+      "2026-11-23",
+      "2026-12-29"
+    ],
+    "historical_depth_available": false,
+    "method": "Completed minute close signals, next-minute open entry/exit; equal quantities; positive volume all four bars; nearest expiry present in archive; one attempt/day. Original budget and Kotak fees compared. Slippage sensitivities predeclared.",
+    "limitations": [
+      "No historical bid/ask, order book, margin or fill sequence. Simultaneous four-leg fill assumption.",
+      "Minute prices are separate last trades; synchronized timestamps do not guarantee executable quotes.",
+      "Nearest expiry in available archive may differ from actual nearest listed expiry; archive coverage incomplete.",
+      "65-unit lot assumption; empty historical metadata. Current master is not historical proof.",
+      "Unresolved entries/exits excluded from resolved P&L and explicitly counted.",
+      "Capital proxy is long premiums times 1.25, not staged basket-margin verification.",
+      "10% capital opportunity cost through expiry in entry gate; elapsed holding-time opportunity cost deducted at exit using conservative 50000 capital proxy.",
+      "No parameter optimization; no orders sent."
+    ]
+  },
+  "results": [
+    {
+      "model": "kotak_api",
+      "slippage_per_leg_per_side": 0.1,
+      "brokerage_per_order": 0,
+      "days": 21,
+      "closed_boxes": 0,
+      "unresolved_days": 0,
+      "net_resolved": 0.0,
+      "gross_resolved": 0.0,
+      "charges": 0.0,
+      "funding": 0.0,
+      "positive_boxes": 0,
+      "eligible_quartets": 14880,
+      "signal_days": 0,
+      "statuses": {
+        "insufficient_data": 18,
+        "no_signal": 3
+      }
+    },
+    {
+      "model": "standard_10",
+      "slippage_per_leg_per_side": 0.1,
+      "brokerage_per_order": 10,
+      "days": 21,
+      "closed_boxes": 0,
+      "unresolved_days": 0,
+      "net_resolved": 0.0,
+      "gross_resolved": 0.0,
+      "charges": 0.0,
+      "funding": 0.0,
+      "positive_boxes": 0,
+      "eligible_quartets": 14880,
+      "signal_days": 0,
+      "statuses": {
+        "insufficient_data": 18,
+        "no_signal": 3
+      }
+    },
+    {
+      "model": "slippage_050",
+      "slippage_per_leg_per_side": 0.5,
+      "brokerage_per_order": 0,
+      "days": 21,
+      "closed_boxes": 0,
+      "unresolved_days": 0,
+      "net_resolved": 0.0,
+      "gross_resolved": 0.0,
+      "charges": 0.0,
+      "funding": 0.0,
+      "positive_boxes": 0,
+      "eligible_quartets": 14880,
+      "signal_days": 0,
+      "statuses": {
+        "insufficient_data": 18,
+        "no_signal": 3
+      }
+    },
+    {
+      "model": "slippage_100",
+      "slippage_per_leg_per_side": 1.0,
+      "brokerage_per_order": 0,
+      "days": 21,
+      "closed_boxes": 0,
+      "unresolved_days": 0,
+      "net_resolved": 0.0,
+      "gross_resolved": 0.0,
+      "charges": 0.0,
+      "funding": 0.0,
+      "positive_boxes": 0,
+      "eligible_quartets": 14880,
+      "signal_days": 0,
+      "statuses": {
+        "insufficient_data": 18,
+        "no_signal": 3
+      }
+    },
+    {
+      "model": "original_budget",
+      "slippage_per_leg_per_side": 0.1,
+      "brokerage_per_order": 0,
+      "days": 21,
+      "closed_boxes": 0,
+      "unresolved_days": 0,
+      "net_resolved": 0.0,
+      "gross_resolved": 0.0,
+      "charges": 0.0,
+      "funding": 0.0,
+      "positive_boxes": 0,
+      "eligible_quartets": 14880,
+      "signal_days": 0,
+      "statuses": {
+        "insufficient_data": 18,
+        "no_signal": 3
+      }
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "kind": "active_expiry_historify_backfill",
+  "start_date": "2026-08-24",
+  "end_date": "2026-09-30",
+  "expiries": [
+    "06OCT26",
+    "13OCT26",
+    "19OCT26",
+    "27OCT26",
+    "03NOV26",
+    "23NOV26",
+    "29DEC26"
+  ],
+  "contract_count": 196,
+  "completed": 196,
+  "successes": 196,
+  "failures": 0,
+  "records": 344030,
+  "skipped_expiries": [],
+  "errors": [],
+  "updated_ist": "2026-10-01T23:09:11+05:30",
+  "finished": true
+}

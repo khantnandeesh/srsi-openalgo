@@ -1,0 +1,23 @@
+{
+  "day": "2026-10-01",
+  "policies": [
+    "exact_6otm",
+    "premium_80_150_near115_0to6otm"
+  ],
+  "qty": 325,
+  "lots": 5,
+  "candle_minutes": 5,
+  "srsi": "RSI4, Stoch4, K2,D2; selected contract must actually transition from finite nonzero K to zero on this recorded second",
+  "spot": "last completed NIFTY1m close; close only available at timestamp+1minute; no future minute closes or live spot tape",
+  "expiry": "nearest recorded active expiry among fresh qualifying contracts",
+  "premium_policy": "0..6 OTM, inclusive80..150, closest115; then zero-transition",
+  "quotes": "recorded1s close available at source timestamp+1second; only fresh<=5seconds qualify for newentry",
+  "warmup": "full five-minute positive-close buckets from preOct1cache plus currentday1m history known before first recorded quote; minimum10completedbars",
+  "post_capture_history": "only observed close at candle boundary, never later backfilled with future data; missed whole candle invalidates SRSI until restart",
+  "entry_cutoff": "13:30 IST",
+  "exit": "K>=80 and currentprice>=actualmodeledbuyprice; strict currentprice<entry-15; EOD15:25 iffresh",
+  "execution": "next recorded quote after signal, buy+0.25, sell-1point; if no nextquote within5seconds retainunresolved rather than inferfill",
+  "missing": "held gap>5seconds flagged; missingtailunresolved; closedtrade totals are resolvedsubtotals only",
+  "fee": "40brokerage roundtrip; transaction0.03553%,SEBI0.0001%,stamp0.003%buy,STT0.15%sell,GST18%brokerage+transaction+SEBI",
+  "limitations": "one day, quoteaggregates not guaranteed completeexchange ticks, no bidask or five-second limitfill proof; policies predeclared not tuned on results"
+}

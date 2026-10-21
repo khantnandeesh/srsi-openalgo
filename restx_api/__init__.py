@@ -109,3 +109,6 @@ api.add_namespace(modify_gtt_order_ns, path="/modifygttorder")
 api.add_namespace(cancel_gtt_order_ns, path="/cancelgttorder")
 api.add_namespace(gtt_orderbook_ns, path="/gttorderbook")
 api.add_namespace(strategy_ns, path="/strategy")
+
+from .srsi_backtest import api as srsi_backtest_ns
+api.add_namespace(srsi_backtest_ns, path="/srsi-backtest")

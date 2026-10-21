@@ -1,0 +1,106 @@
+[
+  {
+    "model": "logistic",
+    "train_n": 3412,
+    "val_n": 1548,
+    "test_n": 2068,
+    "train_positive_rate": 0.7019,
+    "val_positive_rate": 0.6092,
+    "test_positive_rate": 0.6721,
+    "val_logloss": 0.7129,
+    "selected_threshold_from_validation": 0.7547285410892663,
+    "val_selected": {
+      "trades": 20,
+      "win_rate_pct": 55.0,
+      "mean_points": -2.015,
+      "median_points": 0.9,
+      "total_points": -40.3,
+      "profit_factor": 0.336,
+      "worst_daily_points": -40.25
+    },
+    "test_selected": {
+      "trades": 38,
+      "win_rate_pct": 73.68,
+      "mean_points": -0.987,
+      "median_points": 1.0,
+      "total_points": -37.5,
+      "profit_factor": 0.671,
+      "worst_daily_points": -52.5
+    },
+    "test_selected_stress_1pt_sell": {
+      "trades": 38,
+      "win_rate_pct": 60.53,
+      "mean_points": -1.737,
+      "median_points": 0.25,
+      "total_points": -66.0,
+      "profit_factor": 0.466,
+      "worst_daily_points": -58.5
+    },
+    "epochs_mlp": null,
+    "mlp_best_val_logloss": null
+  },
+  {
+    "model": "two_hidden_layer_MLP",
+    "train_n": 3412,
+    "val_n": 1548,
+    "test_n": 2068,
+    "train_positive_rate": 0.7019,
+    "val_positive_rate": 0.6092,
+    "test_positive_rate": 0.6721,
+    "val_logloss": 0.6852,
+    "selected_threshold_from_validation": 0.7278317533386551,
+    "val_selected": {
+      "trades": 21,
+      "win_rate_pct": 71.43,
+      "mean_points": 0.933,
+      "median_points": 3.5,
+      "total_points": 19.6,
+      "profit_factor": 1.294,
+      "worst_daily_points": -10.25
+    },
+    "test_selected": {
+      "trades": 19,
+      "win_rate_pct": 63.16,
+      "mean_points": -2.116,
+      "median_points": 1.35,
+      "total_points": -40.2,
+      "profit_factor": 0.596,
+      "worst_daily_points": -45.75
+    },
+    "test_selected_stress_1pt_sell": {
+      "trades": 19,
+      "win_rate_pct": 52.63,
+      "mean_points": -2.866,
+      "median_points": 0.6,
+      "total_points": -54.45,
+      "profit_factor": 0.485,
+      "worst_daily_points": -48.0
+    },
+    "epochs_mlp": 16,
+    "mlp_best_val_logloss": 0.6852
+  },
+  {
+    "model": "baseline_nearest_ATM",
+    "train_n": 3412,
+    "val_n": 1548,
+    "test_n": 2068,
+    "test_selected": {
+      "trades": 121,
+      "win_rate_pct": 64.46,
+      "mean_points": -0.769,
+      "median_points": 1.45,
+      "total_points": -93.0,
+      "profit_factor": 0.834,
+      "worst_daily_points": -98.6
+    },
+    "test_selected_stress_1pt_sell": {
+      "trades": 121,
+      "win_rate_pct": 57.85,
+      "mean_points": -1.519,
+      "median_points": 0.7,
+      "total_points": -183.75,
+      "profit_factor": 0.692,
+      "worst_daily_points": -116.6
+    }
+  }
+]

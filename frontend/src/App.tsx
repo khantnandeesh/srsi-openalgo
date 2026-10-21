@@ -64,6 +64,7 @@ const Historify = lazy(() => import('@/pages/Historify'))
 const HistorifyCharts = lazy(() => import('@/pages/HistorifyCharts'))
 
 // Tools & Option Chain
+const BacktestSRSI = lazy(() => import("@/pages/BacktestSRSI"))
 const Tools = lazy(() => import('@/pages/Tools'))
 const OptionChain = lazy(() => import('@/pages/OptionChain'))
 const IVChart = lazy(() => import('@/pages/IVChart'))
@@ -218,6 +219,7 @@ function App() {
                 <Route path="/sandbox" element={<Sandbox />} />
                 <Route path="/sandbox/mypnl" element={<SandboxPnL />} />
                 <Route path="/analyzer" element={<Analyzer />} />
+                <Route path="/backtest-srsi" element={<BacktestSRSI />} />
                 <Route path="/tools" element={<Tools />} />
                 <Route path="/scalping" element={<Scalping />} />
                 <Route path="/optionchain" element={<OptionChain />} />

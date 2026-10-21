@@ -1,0 +1,31 @@
+{
+  "selected_variant": "ema20_trend",
+  "positive_validation_eligible": false,
+  "validation_results": [
+    {
+      "variant": "ema20_trend",
+      "phase": "validation",
+      "days": 4,
+      "trades": 8,
+      "unresolved": 0,
+      "raw_gross": 1121.2499999999986,
+      "gross_after_slippage": -9278.750000000002,
+      "fees": 1780.4886033975001,
+      "net": -11059.238603397502,
+      "missing_path_trades": 1
+    },
+    {
+      "variant": "ema20_trend_srsi_reversal",
+      "phase": "validation",
+      "days": 4,
+      "trades": 7,
+      "unresolved": 0,
+      "raw_gross": -2681.250000000007,
+      "gross_after_slippage": -11781.250000000007,
+      "fees": 1514.1928314274999,
+      "net": -13295.442831427508,
+      "missing_path_trades": 2
+    }
+  ],
+  "frozen_before_test": true
+}

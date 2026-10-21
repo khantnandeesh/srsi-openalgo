@@ -1236,21 +1236,36 @@ def update_all_positions_mtm():
             logger.debug("Market closed - skipping MTM update")
             return
 
-        # Get all unique users with positions
+        from database.sandbox_db import SandboxFunds, SandboxHoldings
+        from services.sandbox_pnl_history_service import record_pnl_snapshot
+
+        # Include accounts that are flat so the chart retains the final
+        # realized balance after a position closes.
         positions = SandboxPositions.query.all()
-
-        if not positions:
-            logger.debug("No positions to update")
-            return
-
-        users = set(p.user_id for p in positions)
-        logger.info(f"Updating MTM for {len(positions)} positions across {len(users)} users")
+        users = {fund.user_id for fund in SandboxFunds.query.all()}
+        users.update(position.user_id for position in positions)
 
         for user_id in users:
-            pm = PositionManager(user_id)
-            pm.get_open_positions(update_mtm=True)
+            try:
+                pm = PositionManager(user_id)
+                success, _data, _status = pm.get_open_positions(update_mtm=True)
+                if not success:
+                    continue
+                if SandboxHoldings.query.filter_by(user_id=user_id).filter(
+                    SandboxHoldings.quantity != 0
+                ).first():
+                    holdings_success, _data, _status = HoldingsManager(user_id).get_holdings(
+                        update_mtm=True
+                    )
+                    if not holdings_success:
+                        continue
+                # Saves at most one observation per 15 seconds per user,
+                # independent of whether the browser is open.
+                record_pnl_snapshot(user_id)
+            except Exception:
+                logger.exception("Could not update or save Analyze P&L for user %s", user_id)
 
-        logger.info("MTM update completed")
+        logger.debug("MTM update and persistent P&L capture completed")
 
     except Exception as e:
         logger.exception(f"Error updating MTM for all positions: {e}")

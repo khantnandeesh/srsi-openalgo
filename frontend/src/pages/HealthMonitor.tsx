@@ -578,28 +578,28 @@ export default function HealthMonitor() {
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Current:</dt>
-                  <dd className="font-medium">{stats.fd.current}</dd>
+                  <dd className="font-medium">{stats.fd?.current ?? "-"}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Average:</dt>
-                  <dd className="font-medium">{stats.fd.avg.toFixed(1)}</dd>
+                  <dd className="font-medium">{stats.fd?.avg != null ? stats.fd.avg.toFixed(1) : "-"}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Min / Max:</dt>
                   <dd className="font-medium">
-                    {stats.fd.min} / {stats.fd.max}
+                    {stats.fd?.min ?? "-"} / {stats.fd?.max ?? "-"}
                   </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Warnings:</dt>
                   <dd className="font-medium text-yellow-600 dark:text-yellow-400">
-                    {stats.fd.warn_count}
+                    {stats.fd?.warn_count ?? 0}
                   </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Failures:</dt>
                   <dd className="font-medium text-red-600 dark:text-red-400">
-                    {stats.fd.fail_count}
+                    {stats.fd?.fail_count ?? 0}
                   </dd>
                 </div>
               </dl>
@@ -614,28 +614,28 @@ export default function HealthMonitor() {
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Current:</dt>
-                  <dd className="font-medium">{stats.memory.current_mb.toFixed(1)} MB</dd>
+                  <dd className="font-medium">{stats.memory?.current_mb != null ? stats.memory.current_mb.toFixed(1) + " MB" : "-"}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Average:</dt>
-                  <dd className="font-medium">{stats.memory.avg_mb.toFixed(1)} MB</dd>
+                  <dd className="font-medium">{stats.memory?.avg_mb != null ? stats.memory.avg_mb.toFixed(1) + " MB" : "-"}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Min / Max:</dt>
                   <dd className="font-medium">
-                    {stats.memory.min_mb.toFixed(1)} / {stats.memory.max_mb.toFixed(1)} MB
+                    {stats.memory?.min_mb != null ? stats.memory.min_mb.toFixed(1) : "-"} / {stats.memory?.max_mb != null ? stats.memory.max_mb.toFixed(1) : "-"}
                   </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Warnings:</dt>
                   <dd className="font-medium text-yellow-600 dark:text-yellow-400">
-                    {stats.memory.warn_count}
+                    {stats.memory?.warn_count ?? 0}
                   </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Failures:</dt>
                   <dd className="font-medium text-red-600 dark:text-red-400">
-                    {stats.memory.fail_count}
+                    {stats.memory?.fail_count ?? 0}
                   </dd>
                 </div>
               </dl>
@@ -650,23 +650,23 @@ export default function HealthMonitor() {
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">DB Current:</dt>
-                  <dd className="font-medium">{stats.database.current}</dd>
+                  <dd className="font-medium">{stats.database?.current ?? "-"}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">DB Average:</dt>
-                  <dd className="font-medium">{stats.database.avg.toFixed(1)}</dd>
+                  <dd className="font-medium">{stats.database?.avg != null ? stats.database.avg.toFixed(1) : "-"}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">WS Current:</dt>
-                  <dd className="font-medium">{stats.websocket.current}</dd>
+                  <dd className="font-medium">{stats.websocket?.current ?? "-"}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">WS Average:</dt>
-                  <dd className="font-medium">{stats.websocket.avg.toFixed(1)}</dd>
+                  <dd className="font-medium">{stats.websocket?.avg != null ? stats.websocket.avg.toFixed(1) : "-"}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Threads:</dt>
-                  <dd className="font-medium">{stats.threads.current}</dd>
+                  <dd className="font-medium">{stats.threads?.current ?? "-"}</dd>
                 </div>
               </dl>
             </CardContent>

@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SRSI Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0c10; --surface: #101319; --surface-2: #151922; --surface-3: #1b202b;
+      --border: #222834; --border-strong: #2e3542;
+      --text: #e7e9ee; --text-2: #a0a8b6; --text-3: #6c7484;
+      --accent: #4c8dff; --accent-strong: #3577f0; --accent-soft: rgba(76,141,255,.12);
+      --pos: #34d399; --pos-soft: rgba(52,211,153,.12);
+      --neg: #f87171; --neg-soft: rgba(248,113,113,.12);
+      --warn: #fbbf24; --warn-soft: rgba(251,191,36,.12);
+      --radius: 10px; --radius-sm: 7px;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    body { display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--bg); color: var(--text);
+      font: 13px/1.45 Inter, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+    button, input, select { font: inherit; color: inherit; }
+    h1, h2, h3, p { margin: 0; }
+    .num { font-variant-numeric: tabular-nums; }
+    .pos { color: var(--pos); } .neg { color: var(--neg); } .muted { color: var(--text-3); }
+
+    /* ---------- top bar ---------- */
+    .topbar { display: flex; align-items: center; gap: 14px; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #4c8dff, #3a5bd9); color: #fff; font-weight: 700; font-size: 12px; }
+    .brand h1 { font-size: 14px; font-weight: 600; white-space: nowrap; }
+    .seg { display: inline-grid; grid-auto-flow: column; gap: 2px; padding: 3px; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface-2); }
+    .seg button { height: 28px; padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: var(--text-2); font-weight: 500; cursor: pointer; }
+    .seg button[aria-pressed="true"], .seg button[aria-checked="true"] { background: var(--surface-3); color: var(--text); box-shadow: inset 0 0 0 1px var(--border-strong); }
+    .seg button:disabled { cursor: not-allowed; opacity: .5; }
+    .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .process { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-2); font-size: 12px; white-space: nowrap; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex: none; }
+    .dot[data-tone="ok"] { background: var(--pos); box-shadow: 0 0 0 3px var(--pos-soft); }
+    .dot[data-tone="warn"] { background: var(--warn); } .dot[data-tone="bad"] { background: var(--neg); }
+    .spacer { flex: 1; }
+
+    /* max loss tile */
+    .risk { position: relative; }
+    .risk-tile { display: grid; grid-template-columns: auto auto auto; align-items: center; gap: 4px 14px; padding: 6px 10px 6px 12px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-2); cursor: pointer; text-align: left; }
+    .risk-tile:hover { border-color: #3a4252; }
+    .risk-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .risk-cell span { display: block; color: var(--text-3); font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+    .risk-cell strong { font-size: 15px; font-weight: 650; }
+    .risk-bar { grid-column: 1 / -1; height: 4px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+    .risk-bar i { display: block; height: 100%; width: 0; background: var(--pos); transition: width .4s ease; }
+    .risk[data-state="near"] .risk-bar i { background: var(--warn); }
+    .risk[data-state="hit"] .risk-bar i { background: var(--neg); }
+    .risk[data-state="hit"] .risk-tile { border-color: color-mix(in srgb, var(--neg) 55%, var(--border)); background: var(--neg-soft); }
+    .risk[data-state="off"] .risk-bar i { background: var(--text-3); }
+    .chev { color: var(--text-3); font-size: 11px; }
+    .popover { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 320px; padding: 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+    .popover[hidden] { display: none; }
+    .popover h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+    .pop-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .pop-note { margin: 8px 0 0; color: var(--text-3); font-size: 11.5px; }
+    .pop-banner { margin-bottom: 10px; padding: 8px 10px; border-left: 3px solid var(--neg); border-radius: 6px; background: var(--neg-soft); font-size: 12px; }
+    details.emails { margin: 4px 0 12px; border: 1px solid var(--border); border-radius: 8px; }
+    details.emails summary { padding: 8px 10px; color: var(--text-2); font-size: 12px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; }
+    details.emails summary::-webkit-details-marker { display: none; }
+    details.emails summary::after { content: "▾"; color: var(--text-3); }
+    details.emails[open] summary::after { content: "▴"; }
+    details.emails textarea { display: block; width: calc(100% - 16px); margin: 0 8px 8px; min-height: 62px; resize: vertical; padding: 8px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface-2); color: var(--text); font: 12px/1.5 var(--mono); }
+
+    /* ---------- controls ---------- */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); font-weight: 500; white-space: nowrap; cursor: pointer; }
+    .btn:hover:not(:disabled) { background: var(--surface-3); }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn.primary { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+    .btn.primary:hover:not(:disabled) { background: var(--accent); }
+    .btn.danger { background: #b4322f; border-color: #b4322f; color: #fff; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.small { height: 28px; padding: 0 10px; font-size: 12px; }
+    label.f { display: grid; gap: 4px; color: var(--text-2); font-size: 11.5px; font-weight: 500; min-width: 0; }
+    input[type="number"], input[type="text"], select { width: 100%; height: 32px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); }
+    input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+    input:disabled, select:disabled { opacity: .55; }
+    .switch { appearance: none; position: relative; width: 34px; height: 20px; margin: 0; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border-strong); cursor: pointer; flex: none; transition: background .15s; }
+    .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--text-2); transition: transform .15s, background .15s; }
+    .switch:checked { background: var(--accent-strong); border-color: var(--accent-strong); }
+    .switch:checked::after { transform: translateX(14px); background: #fff; }
+    .switch:disabled { opacity: .45; cursor: not-allowed; }
+    .switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 999px; background: var(--surface-3); color: var(--text-2); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+    .pill[data-tone="ok"] { background: var(--pos-soft); color: var(--pos); }
+    .pill[data-tone="open"] { background: var(--accent-soft); color: #8fb6ff; }
+    .pill[data-tone="warn"] { background: var(--warn-soft); color: var(--warn); }
+    .pill[data-tone="bad"] { background: var(--neg-soft); color: var(--neg); }
+
+    /* ---------- workspace ---------- */
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(400px, 34%); gap: 16px; padding: 16px 20px; min-height: 0; }
+    .panel { display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+    .panel-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .panel-head h2 { font-size: 14px; font-weight: 600; }
+    .panel-head .sub { color: var(--text-3); font-size: 12px; }
+    .panel-body { flex: 1; min-height: 0; overflow: auto; }
+    .panel-foot { padding: 10px 16px; border-top: 1px solid var(--border); color: var(--text-3); font-size: 11.5px; }
+
+    /* threads */
+    .threads { width: 100%; border-collapse: collapse; }
+    .threads th { position: sticky; top: 0; z-index: 1; padding: 9px 10px; background: var(--surface); border-bottom: 1px solid var(--border); color: var(--text-3); font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; text-align: left; white-space: nowrap; }
+    .threads td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+    .threads tr:last-child td { border-bottom: 0; }
+    .threads tr[data-held="true"] td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+    .threads .r { text-align: right; }
+    .contract strong { font-size: 13.5px; font-weight: 600; }
+    .contract small { display: block; color: var(--text-3); font-size: 11.5px; }
+    .empty { display: grid; place-items: center; height: 100%; padding: 30px; text-align: center; color: var(--text-3); }
+    .empty strong { display: block; margin-bottom: 6px; color: var(--text); font-size: 14px; }
+
+    /* automatic */
+    .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 16px; }
+    .side { padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); min-width: 0; }
+    .side-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .side-head h3 { font-size: 13.5px; font-weight: 600; }
+    .side .seg { width: 100%; grid-template-columns: 1fr 1fr 1.6fr; margin-bottom: 12px; }
+    .side .seg button { padding: 0 8px; }
+    .seg button.dev { position: relative; filter: blur(.6px); opacity: .42; cursor: not-allowed; }
+    .dev-tag { display: block; margin: -6px 0 12px; text-align: right; color: var(--text-3); font-size: 10.5px; letter-spacing: .03em; }
+    .side-contract { font-size: 15px; font-weight: 600; }
+    .side-pnl { margin-top: 6px; font-size: 20px; font-weight: 650; }
+    .kv { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+    .kv div { padding: 7px 9px; border-radius: 7px; background: var(--surface); }
+    .kv span { display: block; color: var(--text-3); font-size: 10.5px; }
+    .kv strong { font-size: 12.5px; font-weight: 600; }
+    .side-note { margin-top: 10px; color: var(--text-3); font-size: 11.5px; min-height: 17px; white-space: normal; }
+    .auto-settings { margin: 0 16px 16px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); }
+    .auto-settings-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .auto-settings-head h3 { font-size: 12.5px; font-weight: 600; }
+    .auto-grid { display: grid; grid-template-columns: 1.1fr 1.1fr .7fr .8fr .8fr 1fr; gap: 10px; align-items: end; }
+
+    /* chain */
+    .chain-tools { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    .chain-meta { display: flex; justify-content: space-between; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); color: var(--text-2); font-size: 12px; }
+    .chain-meta strong { color: var(--text); }
+    .chain { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .chain th { position: sticky; top: 0; z-index: 1; padding: 7px 10px; background: var(--surface); border-bottom: 1px solid var(--border); color: var(--text-3); font-size: 10.5px; font-weight: 600; letter-spacing: .06em; }
+    .chain th:first-child { color: var(--pos); text-align: left; } .chain th:last-child { color: var(--neg); text-align: right; }
+    .chain td { height: 36px; padding: 0 8px; border-bottom: 1px solid var(--border); }
+    .chain td.strike { text-align: center; font-weight: 600; color: var(--text-2); background: var(--surface-2); }
+    .chain tr.atm td.strike { color: var(--text); box-shadow: inset 0 0 0 1px var(--accent-strong); }
+    .chain tr.atm td.strike small { display: block; color: var(--accent); font-size: 9.5px; font-weight: 600; line-height: 1; }
+    .q { display: flex; align-items: center; gap: 6px; }
+    td.pe .q { flex-direction: row-reverse; }
+    .q .px { flex: 1; font: 500 12.5px var(--mono); }
+    td.pe .q .px { text-align: right; }
+    .q .px.live { color: var(--text); } .q .px:not(.live) { color: var(--text-2); }
+    .cell-btn { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface-2); color: var(--text-2); font-size: 14px; line-height: 1; cursor: pointer; flex: none; }
+    .cell-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+    .cell-btn.x { border-color: color-mix(in srgb, var(--neg) 50%, var(--border)); color: var(--neg); background: var(--neg-soft); }
+    .cell-btn:disabled { opacity: .35; cursor: not-allowed; }
+    .cell-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    td.has-thread { background: var(--accent-soft); }
+    td.is-held { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+    .pair-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--surface-2); color: var(--text-2); font-size: 10.5px; font-weight: 600; line-height: 17px; cursor: pointer; vertical-align: 1px; }
+    .pair-tag:hover { border-color: var(--accent); color: var(--text); }
+    .pair-tag:empty { display: none; }
+    .tag { padding: 1px 6px; border-radius: 5px; background: var(--accent-strong); color: #fff; font-size: 10px; font-weight: 600; white-space: nowrap; }
+
+    /* dialogs + toast */
+    dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--border-strong); border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 30px 70px rgba(0,0,0,.55); }
+    dialog::backdrop { background: rgba(4,6,10,.62); }
+    .dlg { padding: 20px; }
+    .dlg h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .dlg p { color: var(--text-2); font-size: 13px; }
+    .dlg .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    .add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    .add-grid .full { grid-column: 1 / -1; }
+    .add-summary { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); color: var(--text-2); font-size: 12.5px; }
+    .add-summary strong { color: var(--text); }
+    .err { margin-top: 10px; color: var(--neg); font-size: 12px; }
+    .err:empty { display: none; }
+    .toast { position: fixed; top: 66px; right: 20px; z-index: 50; transform: translateY(-12px); max-width: min(380px, calc(100vw - 32px)); padding: 11px 16px 11px 14px; border: 1px solid var(--border-strong); border-left: 3px solid var(--text-3); border-radius: 10px; background: var(--surface-3); color: var(--text); font-size: 12.5px; line-height: 1.45; box-shadow: 0 10px 30px rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+    .toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .toast[data-tone="error"] { border-color: color-mix(in srgb, var(--neg) 60%, var(--border)); border-left-color: var(--neg); }
+    .toast[data-tone="ok"] { border-color: color-mix(in srgb, var(--pos) 50%, var(--border)); border-left-color: var(--pos); }
+    [hidden] { display: none !important; }
+
+    @media (max-width: 1280px) { .auto-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .workspace { grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; padding: 12px; } .topbar { gap: 10px; padding: 8px 12px; } .brand h1 { display: none; } }
+    /* Bigger text everywhere; steps up with the screen so laptops still fit on one screen. */
+    :root { --z: 1.1; }
+    @media (min-width: 1600px) { :root { --z: 1.2; } }
+    @media (min-width: 1900px) { :root { --z: 1.3; } }
+    @media (min-width: 2400px) { :root { --z: 1.5; } }
+    @media (min-width: 3000px) { :root { --z: 1.8; } }
+    body { zoom: var(--z); height: calc(100vh / var(--z)); }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><h1>SRSI console</h1></div>
+    <div class="seg" role="group" aria-label="Trading mode">
+      <button type="button" data-mode="manual" aria-pressed="true">Manual</button>
+      <button type="button" data-mode="automatic" aria-pressed="false">Automatic</button>
+    </div>
+    <span class="process" role="status"><i class="dot" id="proc-dot"></i><span id="proc-text">Checking strategy…</span></span>
+    <span class="spacer"></span>
+    <div class="risk" id="risk" data-state="off">
+      <button type="button" class="risk-tile" id="risk-tile" aria-haspopup="dialog" aria-expanded="false" aria-controls="risk-pop">
+        <span class="risk-cell"><span>Today P&amp;L</span><strong class="num" id="risk-pnl">₹0.00</strong></span>
+        <span class="risk-cell"><span>Max loss</span><strong class="num" id="risk-max">Off</strong></span>
+        <span class="chev" aria-hidden="true">▾</span>
+        <span class="risk-bar" aria-hidden="true"><i id="risk-fill"></i></span>
+      </button>
+      <div class="popover" id="risk-pop" role="dialog" aria-label="Max loss settings" hidden>
+        <h3>Max loss today</h3>
+        <div class="pop-banner" id="risk-banner" hidden></div>
+        <div class="pop-row"><span>Stop everything at max loss</span><input type="checkbox" class="switch" id="risk-on" aria-label="Stop everything at max loss"></div>
+        <label class="f">Max loss (₹)<input type="number" id="risk-amount" min="100" step="100" inputmode="decimal"></label>
+        <details class="emails" id="risk-emails-box"><summary><span id="risk-emails-label">Alert emails</span></summary>
+          <textarea id="risk-emails" spellcheck="false" aria-label="Alert emails, one per line or comma separated"></textarea></details>
+        <p class="err" id="risk-err" role="alert"></p>
+        <div class="pop-row" style="margin:0"><span class="muted" style="font-size:11.5px">Sells everything and stops all threads for the day.</span><button type="button" class="btn primary small" id="risk-save" disabled>Save</button></div>
+      </div>
+    </div>
+    <div class="risk">
+      <button type="button" class="btn" id="rules-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="rules-pop"><span id="rules-text">Rules</span><span class="chev" aria-hidden="true">▾</span></button>
+      <div class="popover" id="rules-pop" role="dialog" aria-label="Strategy rules" hidden>
+        <h3>Strategy rules</h3>
+        <div class="add-grid" style="margin-top:0">
+          <label class="f">Buy when K =<input type="number" id="rule-entry" min="0" max="100" step="0.01"></label>
+          <label class="f">Sell when K ≥<input type="number" id="rule-exit" min="0" max="100" step="0.01"></label>
+          <label class="f">Stop-loss (points)<input type="number" id="rule-sl" min="0" step="0.05"></label>
+          <label class="f" id="rule-candle-field">Candle for new manual threads<select id="rule-candle"><option value="1">1 min</option><option value="3">3 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option></select></label>
+        </div>
+        <p class="pop-note" id="rules-note">Applies to threads started after you save. Running threads keep their rules.</p>
+        <p class="err" id="rules-err" role="alert"></p>
+        <div class="pop-row" style="margin:10px 0 0;justify-content:flex-end"><button type="button" class="btn primary small" id="rules-save" disabled>Save</button></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <!-- Manual -->
+    <section class="panel" id="manual" aria-labelledby="manual-h">
+      <div class="panel-head">
+        <h2 id="manual-h">Threads</h2><span class="sub num" id="thread-count"></span>
+        <span class="spacer"></span>
+        <button type="button" class="btn" id="pair-btn" title="Pair one CE thread with one PE thread"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>Pair</button>
+      </div>
+      <div class="panel-body" id="thread-body"></div>
+      <div class="panel-foot">Stop-loss: an unpaired thread is deleted; a paired thread waits until its partner finishes a trade. You get an email either way. Turning a thread off deletes it.</div>
+    </section>
+
+    <!-- Automatic -->
+    <section class="panel" id="automatic" aria-labelledby="auto-h" hidden>
+      <div class="panel-head"><h2 id="auto-h">Automatic</h2><span class="sub" id="auto-sub">Each side trades one strike inside your premium band.</span></div>
+      <div class="panel-body">
+        <div class="sides">
+          <article class="side" data-side="CE"></article>
+          <article class="side" data-side="PE"></article>
+        </div>
+        <section class="auto-settings" aria-labelledby="auto-set-h">
+          <div class="auto-settings-head"><h3 id="auto-set-h">Settings</h3><span class="muted" id="auto-lock" style="font-size:11.5px"></span><button type="button" class="btn primary small" id="auto-save" disabled>Save</button></div>
+          <div class="auto-grid">
+            <label class="f">Index<select id="auto-index"></select></label>
+            <label class="f">Expiry<select id="auto-expiry"><option value="">Loading…</option></select></label>
+            <label class="f">Lots<input type="number" id="auto-lots" min="1" step="1"></label>
+            <label class="f">Premium from ₹<input type="number" id="auto-min" min="0.05" step="0.05"></label>
+            <label class="f">to ₹<input type="number" id="auto-max" min="0.05" step="0.05"></label>
+            <label class="f">Candle<select id="auto-candle"><option value="1">1 min</option><option value="3">3 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option></select></label>
+          </div>
+          <p class="err" id="auto-err" role="alert"></p>
+        </section>
+      </div>
+    </section>
+
+    <!-- Option chain -->
+    <aside class="panel" aria-labelledby="chain-h">
+      <div class="panel-head"><h2 id="chain-h">Option chain</h2><span class="sub" id="chain-feed">Connecting…</span></div>
+      <div class="chain-tools">
+        <select id="chain-index" aria-label="Index"></select>
+        <select id="chain-expiry" aria-label="Expiry"><option value="">Loading…</option></select>
+        <input type="number" id="chain-center" placeholder="Find strike" aria-label="Find strike" step="50">
+        <button type="button" class="btn" id="chain-atm">ATM</button>
+      </div>
+      <div class="chain-meta"><span>Spot <strong class="num" id="chain-spot">—</strong></span><span>ATM <strong class="num" id="chain-atm-val">—</strong></span><span id="chain-hint" class="muted"></span></div>
+      <div class="panel-body" id="chain-scroll">
+        <table class="chain"><thead><tr><th>CALL</th><th style="width:84px">STRIKE</th><th>PUT</th></tr></thead><tbody id="chain-rows"></tbody></table>
+      </div>
+    </aside>
+  </main>
+
+  <dialog id="add-dlg" aria-labelledby="add-title">
+    <form class="dlg" id="add-form" method="dialog">
+      <h2 id="add-title">Add thread</h2>
+      <p>The thread starts right away and buys on the SRSI entry.</p>
+      <div class="add-grid">
+        <label class="f">Index<select id="add-index"></select></label>
+        <label class="f">Expiry<select id="add-expiry"></select></label>
+        <label class="f">Strike<select id="add-strike"></select></label>
+        <div class="f"><span>Type</span><div class="seg" role="radiogroup" aria-label="Option type" id="add-type" style="width:100%;grid-template-columns:1fr 1fr">
+          <button type="button" role="radio" data-type="CE" aria-checked="true">CE</button><button type="button" role="radio" data-type="PE" aria-checked="false">PE</button></div></div>
+        <label class="f full">Lots<input type="number" id="add-lots" min="1" step="1" value="1" required></label>
+      </div>
+      <div class="add-summary" id="add-summary"></div>
+      <p class="err" id="add-err" role="alert"></p>
+      <div class="actions"><button type="button" class="btn" id="add-cancel">Cancel</button><button type="submit" class="btn primary" id="add-ok">Start thread</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="pair-dlg" aria-labelledby="pair-title">
+    <form class="dlg" id="pair-form" method="dialog">
+      <h2 id="pair-title">Pair a CE with a PE</h2>
+      <p>If one side hits its stop-loss, it waits until the other side finishes one trade, then trades again.</p>
+      <div class="add-grid">
+        <label class="f">CE thread<select id="pair-ce"></select></label>
+        <label class="f">PE thread<select id="pair-pe"></select></label>
+      </div>
+      <p class="err" id="pair-err" role="alert"></p>
+      <div class="actions"><button type="button" class="btn" id="pair-cancel">Cancel</button><button type="submit" class="btn primary" id="pair-ok">Pair</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="confirm-dlg" aria-labelledby="confirm-title">
+    <div class="dlg">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-copy"></p>
+      <div class="actions"><button type="button" class="btn" id="confirm-no">Cancel</button><button type="button" class="btn primary" id="confirm-yes"></button></div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const API = location.pathname.replace(/\/+$/, "").replace(/\/index\.html$/, "");
+    const $ = s => document.querySelector(s);
+    const INDEXES = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX", "BANKEX"];
+    const STRIKE_STEP = {NIFTY: 50, BANKNIFTY: 100, FINNIFTY: 50, MIDCPNIFTY: 25, SENSEX: 100, BANKEX: 100};
+    let runtime = null, runtimeError = null, config = null, busy = false;
+    let chain = null, feed = null, quotes = new Map(), chainSerial = 0;
+    const expiryCache = new Map();
+
+    // ---------- helpers ----------
+    const money = (v, sign = true) => { const n = Number(v) || 0; return (n < 0 ? "−" : sign && n > 0 ? "+" : "") + "₹" + Math.abs(n).toLocaleString("en-IN", {minimumFractionDigits: 2, maximumFractionDigits: 2}); };
+    const px = v => v == null || !Number.isFinite(Number(v)) || Number(v) <= 0 ? "—" : Number(v).toFixed(2);
+    const tone = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
+    const expLabel = e => { const m = /^(\d{2})([A-Z]{3})(\d{2})$/.exec(e || ""); return m ? Number(m[1]) + " " + m[2][0] + m[2].slice(1).toLowerCase() : e || ""; };
+    const symbolOf = r => r.underlying + r.expiry_date + r.strike_price + r.option_type;
+    function el(tag, props = {}, ...kids) { const n = Object.assign(document.createElement(tag), props); n.append(...kids.filter(k => k != null)); return n; }
+    function pill(text, tn, title) { const n = el("span", {className: "pill", textContent: text, title: title || ""}); n.dataset.tone = tn || ""; return n; }
+    let toastTimer;
+    // Same notification sound as the rest of OpenAlgo (served by OpenAlgo at /sounds/alert.mp3).
+    const alertSound = new Audio("/sounds/alert.mp3");
+    alertSound.preload = "auto";
+    function chime() {
+      try { alertSound.currentTime = 0; const p = alertSound.play(); if (p) p.catch(() => {}); } catch (_) {}
+    }
+    function toast(text, kind = "") {
+      const t = $("#toast"); t.textContent = text; t.dataset.tone = kind;
+      const z = parseFloat(getComputedStyle(document.body).zoom) || 1;   // page zoom grows text on big screens
+      t.style.top = (document.querySelector(".topbar").getBoundingClientRect().bottom / z + 10) + "px";   // just under the top bar
+      t.classList.add("show"); chime(kind);
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), kind === "error" ? 6000 : 3200);
+    }
+    async function api(path, body) {
+      const response = await fetch(API + path, body === undefined ? {cache: "no-store"} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Request failed");
+      return data;
+    }
+    function session() {
+      const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {timeZone: "Asia/Kolkata", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23"}).formatToParts(new Date()).map(x => [x.type, x.value]));
+      const m = Number(p.hour) * 60 + Number(p.minute);
+      if (["Sat", "Sun"].includes(p.weekday) || m >= 930) return "closed";
+      if (m < 555) return "before";
+      return m >= 915 ? "cutoff" : "open";
+    }
+    const confirmDlg = $("#confirm-dlg");
+    function ask(title, copy, label, danger = false) {
+      $("#confirm-title").textContent = title; $("#confirm-copy").textContent = copy;
+      const yes = $("#confirm-yes"); yes.textContent = label; yes.className = "btn " + (danger ? "danger" : "primary");
+      confirmDlg.showModal(); $("#confirm-no").focus();
+      return new Promise(resolve => {
+        const done = v => { confirmDlg.close(); yes.onclick = $("#confirm-no").onclick = confirmDlg.oncancel = null; resolve(v); };
+        yes.onclick = () => done(true); $("#confirm-no").onclick = () => done(false);
+        confirmDlg.oncancel = e => { e.preventDefault(); done(false); };
+      });
+    }
+    async function loadExpiries(index) {
+      if (expiryCache.has(index)) return expiryCache.get(index);
+      const data = await api("/api/expiries?" + new URLSearchParams({underlying: index}));
+      expiryCache.set(index, data.expiries || []);
+      return data.expiries || [];
+    }
+    function fillSelect(select, values, value, label = v => v) {
+      select.replaceChildren(...values.map(v => new Option(label(v), v)));
+      if (value != null && values.includes(value)) select.value = value;
+    }
+
+    // ---------- runtime ----------
+    function manualRecord(name) { return (runtime?.workers || []).find(w => w.name === name && !w.configuration?.automatic); }
+    function threadView(row) {
+      const w = manualRecord(row.name), leg = w?.leg || {};
+      const s = session(), closed = s === "closed" || s === "before";
+      if (!runtime) return {label: "Checking…", tone: ""};
+      const sl = !w && runtime.stopped_after_sl?.[row.name];
+      if (sl) return {label: "Stopped after SL · " + String(sl.at || "").slice(11, 16), tone: "warn", detail: "Hit its stop-loss and turned itself off. Switch on to trade it again."};
+      if (!runtime.online) {
+        if (runtime.pair_cooling?.[row.name]) return {label: "Cooling down", tone: "warn", detail: "Waiting for " + (runtime.pair_cooling[row.name].partner_label || "the paired thread") + " to finish a trade"};
+        if (w) return {label: "Exit pending · start SRSI", tone: "warn", w};
+        return row.enabled ? {label: "Starts with SRSI", tone: "", w} : {label: "Off", tone: "", w};
+      }
+      if (!w) { const err = runtime.start_errors?.[row.name]; return err ? {label: "Start failed", tone: "bad", detail: err} : {label: row.enabled ? "Not running" : "Off", tone: ""}; }
+      const qty = Number(w.quantity || 0);
+      if (w.state === "halted") return {label: "Needs attention", tone: "bad", w, leg};
+      if (w.cooldown && !qty && !w.pending_order) return {label: "Cooling down", tone: "warn", detail: w.cooldown, w, leg};
+      if (w.removing) return {label: qty || w.pending_order ? "Deleting after exit" : "Deleting…", tone: "warn", w, leg};
+      if (w.state === "starting" || !leg.ready) return {label: "Starting", tone: "", w, leg};
+      if (w.position_sync_blocked) return {label: "Checking position", tone: "warn", w, leg};
+      if (w.phase === "BUY_PENDING" || w.phase === "BUY_SUBMIT_UNKNOWN") return {label: "Buy order pending", tone: "warn", w, leg};
+      if (w.phase === "SELL_PENDING" || w.phase === "SELL_SUBMIT_UNKNOWN") return {label: "Selling", tone: "warn", w, leg};
+      if (qty > 0) return {label: "Holding", tone: "open", w, leg};
+      if (w.stop_after_exit) return {label: "Stopping", tone: "warn", w, leg};
+      if (closed) return {label: "Waiting · closed", tone: "", w, leg};
+      if (s === "cutoff") return {label: "No new buys after 15:15", tone: "", w, leg};
+      return {label: "Waiting to buy", tone: "ok", w, leg};
+    }
+    async function refreshRuntime() {
+      try { acceptRuntime(await api("/api/runtime")); runtimeError = null; }
+      catch (e) { runtimeError = e.message; render(); }
+    }
+    function acceptRuntime(data) {
+      if (runtime?.observed_at && data.observed_at && data.observed_at < runtime.observed_at && data.online === runtime.online) return;
+      runtime = data;
+      if (data.configuration) config = data.configuration;
+      render();
+    }
+
+    // ---------- render ----------
+    function render() {
+      const mode = runtime?.mode || config?.mode || "manual";
+      const workers = runtime?.workers || [];
+      const unsafe = workers.some(w => w.state !== "running" || w.pending_order || w.quantity || w.phase !== "WAITING_TO_BUY");
+      for (const b of document.querySelectorAll("[data-mode]")) {
+        b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+        b.disabled = busy || !runtime || unsafe;
+        b.title = unsafe ? "Every thread must be flat and waiting to buy before switching" : "";
+      }
+      $("#manual").hidden = mode !== "manual";
+      $("#automatic").hidden = mode !== "automatic";
+      const s = session();
+      const dot = $("#proc-dot");
+      if (runtimeError) { dot.dataset.tone = "bad"; $("#proc-text").textContent = "Controller unreachable · retrying"; }
+      else if (!runtime) { dot.dataset.tone = ""; $("#proc-text").textContent = "Checking strategy…"; }
+      else if (!runtime.online) { dot.dataset.tone = "warn"; $("#proc-text").textContent = "SRSI stopped · start it in Python Strategies"; }
+      else { dot.dataset.tone = "ok"; $("#proc-text").textContent = "SRSI running · " + ({open: "market open", cutoff: "no new buys after 15:15", before: "before market open", closed: "market closed"})[s]; }
+      renderRisk();
+      renderRules();
+      if (mode === "manual") renderThreads(); else renderAutomatic();
+      markChain();
+    }
+
+    const threadRows = new Map();   // name -> {tr, cells, on}; rows update in place so clicks and focus survive refreshes
+    let threadTable = null;
+    function renderThreads() {
+      const rows = config?.workers || [];
+      const body = $("#thread-body");
+      $("#thread-count").textContent = rows.length ? rows.length + (rows.length === 1 ? " thread" : " threads") : "";
+      $("#pair-btn").disabled = busy || !runtime || !config || rows.length < 2;
+      if (!rows.length) {
+        threadRows.clear(); threadTable = null;
+        body.replaceChildren(el("div", {className: "empty"}, el("div", {}, el("strong", {textContent: "No threads yet"}),
+          "Press ＋ next to a premium in the option chain to add one.")));
+        return;
+      }
+      if (!threadTable) {
+        threadTable = el("table", {className: "threads"});
+        threadTable.innerHTML = '<thead><tr><th>Contract</th><th>Lots</th><th>Status</th><th class="r">LTP</th><th class="r">K</th><th class="r">Entry</th><th class="r">P&amp;L</th><th class="r">On</th></tr></thead>';
+        threadTable.append(el("tbody"));
+        body.replaceChildren(threadTable);
+      }
+      const tbody = threadTable.tBodies[0];
+      const names = new Set(rows.map(r => r.name));
+      for (const [name, item] of threadRows) if (!names.has(name)) { item.tr.remove(); threadRows.delete(name); }
+      rows.forEach((row, index) => {
+        let item = threadRows.get(row.name);
+        if (!item) {
+          const cells = Array.from({length: 8}, (_, i) => el("td", {className: i >= 3 ? "r num" : i === 1 ? "num" : ""}));
+          cells[0].className = "contract";
+          const tag = el("span", {className: "pair-tag"});
+          tag.addEventListener("click", () => unpairThread(row));
+          cells[0].append(el("strong", {textContent: row.strike_price + " " + row.option_type}), tag, el("small", {textContent: row.underlying + " · " + expLabel(row.expiry_date)}));
+          const on = el("input", {type: "checkbox", className: "switch"});
+          on.addEventListener("change", () => { const wasOn = !on.checked; on.checked = wasOn; wasOn ? removeThread(row) : startExisting(row); });
+          cells[7].className = "r"; cells[7].append(on);
+          item = {tr: el("tr", {}, ...cells), cells, on, status: pill("", ""), tag};
+          cells[2].append(item.status);
+          threadRows.set(row.name, item);
+        }
+        if (tbody.children[index] !== item.tr) tbody.insertBefore(item.tr, tbody.children[index] || null);
+        const v = threadView(row), leg = v.leg || {}, w = v.w;
+        const qty = Number(w?.quantity || 0), ltp = leg.ltp ?? null, entry = leg.entry_price ?? null;
+        const pnl = qty > 0 && entry && ltp ? (ltp - entry) * qty : null;
+        const c = item.cells;
+        item.tr.dataset.held = String(qty > 0);
+        const pairIndex = (config?.pairs || []).findIndex(p => p.includes(row.name));
+        const partnerName = pairIndex >= 0 ? config.pairs[pairIndex].find(n => n !== row.name) : null;
+        const partnerRow = rows.find(r => r.name === partnerName);
+        item.tag.textContent = pairIndex >= 0 ? "Pair " + (pairIndex + 1) : "";
+        item.tag.title = partnerRow ? "Paired with " + partnerRow.strike_price + " " + partnerRow.option_type + " · click to unpair" : "";
+        c[1].textContent = row.lots; c[1].title = leg.order_quantity ? leg.order_quantity + " qty" : "";
+        item.status.textContent = v.label; item.status.dataset.tone = v.tone || ""; item.status.title = v.detail || "";
+        c[3].textContent = px(ltp);
+        c[4].textContent = leg.k != null ? Number(leg.k).toFixed(1) : "—";
+        c[5].textContent = qty > 0 ? px(entry) : "—"; c[5].title = leg.stop_price ? "Stop " + px(leg.stop_price) : "";
+        c[6].textContent = pnl != null ? money(pnl) : "—"; c[6].className = "r num " + (pnl != null ? tone(pnl) : "muted");
+        item.on.checked = Boolean(w) || row.enabled;
+        item.on.disabled = busy || !runtime || Boolean(w?.removing) || w?.state === "halted";
+        item.on.setAttribute("aria-label", (item.on.checked ? "Turn off and delete " : "Start ") + row.strike_price + " " + row.option_type);
+      });
+    }
+
+    // ---------- manual actions ----------
+    async function removeThread(row) {
+      const v = threadView(row), w = v.w, qty = Number(w?.quantity || 0);
+      const name = row.strike_price + " " + row.option_type + " (" + expLabel(row.expiry_date) + ")";
+      let ok;
+      if (runtime?.online && w && (qty > 0 || w.pending_order || w.phase !== "WAITING_TO_BUY")) {
+        const pnl = qty && w.leg?.entry_price && w.leg?.ltp ? " · P&L " + money((w.leg.ltp - w.leg.entry_price) * qty) : "";
+        ok = await ask("Sell on exit, then delete?",
+          name + (qty ? " is holding " + qty + " qty" + pnl : " has an order in progress") + ". It will not sell now: it stops buying, keeps its stop-loss and SRSI exit, sells when one of them triggers, and is deleted after that.",
+          "Delete after exit");
+      } else if (!runtime?.online) {
+        ok = await ask("Delete " + name + "?", "SRSI is stopped. This thread will be removed and will not start at the next SRSI start.", "Delete", true);
+      } else {
+        ok = await ask("Stop and delete " + name + "?", "It has no position and no order, so it stops and is deleted right away.", "Stop and delete", true);
+      }
+      if (!ok) return;
+      await act({action: "remove", name: row.name}, qty ? name + " will be deleted after it sells." : name + " deleted.");
+    }
+    async function startExisting(row) {
+      await act({action: "start", name: row.name}, row.strike_price + " " + row.option_type + (runtime?.online ? " started." : " will start with SRSI."));
+    }
+    async function act(body, success) {
+      if (busy) return;
+      busy = true; render();
+      try { acceptRuntime(await api("/api/runtime", body)); toast(success, "ok"); }
+      catch (e) { toast(e.message, "error"); }
+      finally { busy = false; render(); }
+    }
+
+    // ---------- pairing ----------
+    const pairDlg = $("#pair-dlg");
+    const pairedNames = () => new Set((config?.pairs || []).flat());
+    function openPair() {
+      if (busy) return;
+      const free = (config?.workers || []).filter(r => !pairedNames().has(r.name));
+      const opt = r => new Option(r.strike_price + " " + r.option_type + " · " + expLabel(r.expiry_date) + " · " + r.lots + " lot", r.name);
+      const ce = free.filter(r => r.option_type === "CE"), pe = free.filter(r => r.option_type === "PE");
+      $("#pair-ce").replaceChildren(...ce.map(opt)); $("#pair-pe").replaceChildren(...pe.map(opt));
+      $("#pair-err").textContent = !ce.length || !pe.length ? "You need at least one unpaired CE thread and one unpaired PE thread." : "";
+      $("#pair-ok").disabled = !ce.length || !pe.length;
+      pairDlg.showModal();
+    }
+    $("#pair-btn").addEventListener("click", openPair);
+    $("#pair-cancel").addEventListener("click", () => pairDlg.close());
+    $("#pair-form").addEventListener("submit", async e => {
+      e.preventDefault();
+      const ce = $("#pair-ce").value, pe = $("#pair-pe").value;
+      const rows = config?.workers || [];
+      const a = rows.find(r => r.name === ce), b = rows.find(r => r.name === pe);
+      if (a && b && a.underlying !== b.underlying) { $("#pair-err").textContent = "Both threads must be on the same index."; return; }
+      busy = true; $("#pair-ok").disabled = true;
+      try {
+        acceptRuntime(await api("/api/runtime", {action: "pair", ce, pe}));
+        pairDlg.close();
+        toast("Paired " + a.strike_price + " CE with " + b.strike_price + " PE.", "ok");
+      } catch (err) { $("#pair-err").textContent = err.message; }
+      finally { busy = false; $("#pair-ok").disabled = false; render(); }
+    });
+    async function unpairThread(row) {
+      const pair = (config?.pairs || []).find(p => p.includes(row.name));
+      if (!pair || busy) return;
+      const other = (config?.workers || []).find(r => r.name === pair.find(n => n !== row.name));
+      if (!await ask("Unpair?", row.strike_price + " " + row.option_type + " and " + (other ? other.strike_price + " " + other.option_type : "its partner")
+          + " will trade independently. A stop-loss on an unpaired thread stops and deletes it.", "Unpair")) return;
+      await act({action: "unpair", name: row.name}, "Unpaired.");
+    }
+
+    // ---------- add dialog ----------
+    const addDlg = $("#add-dlg");
+    let addType = "CE", addStrikes = [];
+    function setAddType(t) {
+      addType = t;
+      for (const b of document.querySelectorAll("#add-type button")) b.setAttribute("aria-checked", String(b.dataset.type === t));
+      updateAddSummary();
+    }
+    async function loadAddStrikes(prefer) {
+      const index = $("#add-index").value, expiry = $("#add-expiry").value;
+      const select = $("#add-strike");
+      select.replaceChildren(new Option("Loading…", "")); select.disabled = true;
+      try {
+        const data = chain && chain.underlying === index && chain.expiry_date === expiry ? chain : await api("/api/chain?" + new URLSearchParams({underlying: index, expiry_date: expiry}));
+        addStrikes = data.chain;
+        const atm = Number(data.atm_strike);
+        fillSelect(select, data.chain.map(r => String(r.strike)), String(prefer || atm), v => v + (Number(v) === atm ? "  · ATM" : ""));
+        select.disabled = false;
+      } catch (e) { select.replaceChildren(new Option("Strikes unavailable", "")); $("#add-err").textContent = e.message; }
+      updateAddSummary();
+    }
+    function updateAddSummary() {
+      const strike = Number($("#add-strike").value), lots = Number($("#add-lots").value);
+      const row = addStrikes.find(r => r.strike === strike), leg = row?.[addType.toLowerCase()];
+      const ltp = leg ? (quotes.get((chain?.option_exchange || "NFO") + ":" + leg.symbol)?.ltp ?? leg.ltp) : null;
+      const qty = leg?.lot_size && lots > 0 ? leg.lot_size * lots : null;
+      const exists = (config?.workers || []).some(r => r.underlying === $("#add-index").value && r.expiry_date === $("#add-expiry").value && Number(r.strike_price) === strike && r.option_type === addType);
+      $("#add-summary").replaceChildren(el("strong", {textContent: (strike || "—") + " " + addType + " · " + expLabel($("#add-expiry").value)}),
+        qty ? " · " + qty + " qty" : "", Number(ltp) > 0 ? " · LTP ₹" + Number(ltp).toFixed(2) + (qty ? " ≈ ₹" + Math.round(ltp * qty).toLocaleString("en-IN") : "") : "");
+      $("#add-err").textContent = exists ? "This contract already has a thread." : "";
+      $("#add-ok").disabled = busy || !strike || !(lots >= 1) || !Number.isInteger(lots) || exists;
+    }
+    async function openAdd(prefill = {}) {
+      if (busy || (runtime?.mode || config?.mode) !== "manual") return;
+      $("#add-err").textContent = "";
+      const index = prefill.underlying || chain?.underlying || config?.workers?.[0]?.underlying || "NIFTY";
+      fillSelect($("#add-index"), INDEXES, index);
+      setAddType(prefill.option_type || addType);
+      $("#add-lots").value = prefill.lots || 1;
+      addDlg.showModal();
+      try {
+        const expiries = await loadExpiries(index);
+        fillSelect($("#add-expiry"), expiries, prefill.expiry_date || (chain?.underlying === index ? chain.expiry_date : expiries[0]), expLabel);
+      } catch (e) { $("#add-err").textContent = e.message; }
+      await loadAddStrikes(prefill.strike_price);
+      $(prefill.strike_price ? "#add-lots" : "#add-strike").focus();
+      if (prefill.strike_price) $("#add-lots").select();
+    }
+    $("#add-cancel").addEventListener("click", () => addDlg.close());
+    $("#add-type").addEventListener("click", e => { const b = e.target.closest("button[data-type]"); if (b) setAddType(b.dataset.type); });
+    $("#add-index").addEventListener("change", async () => {
+      try { const ex = await loadExpiries($("#add-index").value); fillSelect($("#add-expiry"), ex, ex[0], expLabel); } catch (e) { $("#add-err").textContent = e.message; }
+      loadAddStrikes();
+    });
+    $("#add-expiry").addEventListener("change", () => loadAddStrikes(Number($("#add-strike").value) || undefined));
+    $("#add-strike").addEventListener("change", updateAddSummary);
+    $("#add-lots").addEventListener("input", updateAddSummary);
+    $("#add-form").addEventListener("submit", async e => {
+      e.preventDefault();
+      if ($("#add-ok").disabled) return;
+      const row = {underlying: $("#add-index").value, expiry_date: $("#add-expiry").value, strike_price: Number($("#add-strike").value),
+                   option_type: addType, lots: Number($("#add-lots").value)};
+      busy = true; $("#add-ok").disabled = true; $("#add-ok").textContent = "Starting…";
+      try {
+        const data = await api("/api/runtime", {action: "add_start", row});
+        addDlg.close();
+        acceptRuntime(data);
+        toast(row.strike_price + " " + row.option_type + " added" + (data.online ? " and started." : " · starts with SRSI."), "ok");
+      } catch (err) { $("#add-err").textContent = err.message; }
+      finally { busy = false; $("#add-ok").textContent = "Start thread"; render(); updateAddSummary(); }
+    });
+
+    // ---------- automatic ----------
+    let autoDirty = false;
+    function autoRecord(side) { return (runtime?.workers || []).find(w => w.name === "AUTO-" + side); }
+    function sideState(side) {
+      const w = autoRecord(side), flags = runtime?.automatic || config?.automatic || {};
+      const armed = Boolean(flags["enabled_" + side.toLowerCase()]);
+      const held = Number(w?.quantity || 0), pending = Boolean(w?.pending_order);
+      if (!runtime) return {mode: "off", disabled: true, note: "Checking…"};
+      if (w?.state === "waiting_for_strategy") return {mode: "single", disabled: true, note: "Recovery pending · start SRSI", w};
+      if (!runtime.online) return {mode: armed ? "single" : "off", disabled: busy, note: armed ? "Armed · starts with SRSI" : "Off", offline: true, w};
+      const sl = runtime.stopped_after_sl?.["AUTO-" + side];
+      if (!w && sl) return {mode: "off", disabled: busy, note: "Stopped after SL · " + String(sl.at || "").slice(11, 16), w, sl: true};
+      if (!w) return {mode: "off", disabled: busy, note: runtime.start_errors?.["AUTO-" + side] || "Off", w};
+      if (w.state === "halted") return {mode: "single", disabled: true, note: "Needs attention · check orders and positions", w, held};
+      if (w.stop_after_exit) return {mode: "off", disabled: true, note: held || pending ? "Stopping after exit · " + held + " qty still open" : "Stopping…", w, held};
+      return {mode: "single", disabled: busy, w, held, pending, running: true};
+    }
+    const sideCards = {};
+    function sideCard(side) {
+      if (sideCards[side]) return sideCards[side];
+      const root = document.querySelector('[data-side="' + side + '"]');
+      const seg = el("div", {className: "seg", role: "radiogroup"});
+      seg.setAttribute("aria-label", side + " mode");
+      for (const [value, label] of [["off", "Off"], ["single", "Single"], ["all", "Capture all"]]) {
+        const b = el("button", {type: "button", textContent: label});
+        b.dataset.value = value; b.setAttribute("role", "radio");
+        if (value === "all") { b.className = "dev"; b.disabled = true; b.title = "Capture all is under development"; }
+        b.addEventListener("click", () => sideCommand(side, value));
+        seg.append(b);
+      }
+      const c = {seg, status: pill("Off", ""), contract: el("div", {className: "side-contract"}), pnl: el("div", {className: "side-pnl num muted"}),
+                 ltp: el("strong", {className: "num"}), midLabel: el("span"), mid: el("strong", {className: "num"}), qty: el("strong", {className: "num"}),
+                 note: el("p", {className: "side-note"})};
+      root.replaceChildren(
+        el("div", {className: "side-head"}, el("h3", {textContent: side === "CE" ? "Call · CE" : "Put · PE"}), c.status),
+        seg, el("span", {className: "dev-tag", textContent: "Capture all · under development"}), c.contract, c.pnl,
+        el("div", {className: "kv"}, el("div", {}, el("span", {textContent: "LTP"}), c.ltp), el("div", {}, c.midLabel, c.mid),
+          el("div", {}, el("span", {textContent: "Qty"}), c.qty)), c.note);
+      return sideCards[side] = c;
+    }
+    function renderAutomatic() {
+      const auto = config?.automatic || {};
+      const band = "₹" + (auto.premium_min ?? "—") + "–" + (auto.premium_max ?? "—");
+      $("#auto-sub").textContent = runtime && !runtime.online ? "SRSI is stopped · a side set to Single starts with SRSI." : "Each side trades one strike inside " + band + ".";
+      let anyOn = false;
+      for (const side of ["CE", "PE"]) {
+        const st = sideState(side), w = st.w, info = w?.selection || {};
+        if (st.mode !== "off") anyOn = true;
+        const card = sideCard(side);
+        for (const b of card.seg.children) {
+          b.setAttribute("aria-checked", String(st.mode === b.dataset.value));
+          if (b.dataset.value !== "all") b.disabled = st.disabled || st.mode === b.dataset.value;
+        }
+        const qty = Number(w?.quantity || 0);
+        const ltp = info.ltp, entry = info.entry_price;
+        const pnl = qty > 0 && entry && ltp ? (ltp - entry) * qty : null;
+        let label = st.note || "", tn = "";
+        if (st.running) {
+          const code = info.code;
+          label = qty > 0 ? "Holding" : st.pending ? "Order pending" : code === "waiting_to_buy" ? "Waiting to buy" : code === "no_match" ? "No premium in band" : info.status || "Scanning";
+          tn = qty > 0 ? "open" : st.pending ? "warn" : code === "waiting_to_buy" ? "ok" : "";
+        } else if (st.sl) tn = "warn";
+        else if (w?.state === "halted") tn = "bad";
+        else if (w?.stop_after_exit) tn = "warn";
+        card.status.textContent = label || "Off"; card.status.dataset.tone = tn;
+        card.contract.textContent = info.symbol ? (info.strike || "") + " " + side + " · " + expLabel(w?.configuration?.expiry_date || auto.expiry_date) : st.running ? "Selecting a strike…" : "No contract";
+        card.pnl.textContent = pnl != null ? money(pnl) : qty > 0 ? "P&L unavailable" : "—";
+        card.pnl.className = "side-pnl num " + (pnl != null ? tone(pnl) : "muted");
+        card.ltp.textContent = px(ltp);
+        card.midLabel.textContent = qty > 0 ? "Entry · Stop" : "SRSI K";
+        card.mid.textContent = qty > 0 ? px(entry) + " · " + px(info.stop_price) : info.k != null ? Number(info.k).toFixed(1) : "—";
+        card.qty.textContent = qty || info.order_quantity || "—";
+        card.note.textContent = st.running && !qty ? (info.symbol ? "Buys when SRSI K = " + (info.entry_k ?? 0) + "." : "Looking for a fresh premium inside " + band + ".") : "";
+      }
+      const lock = anyOn || busy || !runtime;
+      for (const input of document.querySelectorAll(".auto-grid input, .auto-grid select")) input.disabled = lock || input.dataset.loading === "true";
+      $("#auto-lock").textContent = anyOn ? "Locked while a side is on" : "";
+      if (!autoDirty && config) fillAutoForm();
+      $("#auto-save").disabled = lock || !autoDirty;
+    }
+    async function fillAutoForm() {
+      const auto = config.automatic;
+      fillSelect($("#auto-index"), INDEXES, auto.underlying);
+      $("#auto-lots").value = auto.lots; $("#auto-min").value = auto.premium_min; $("#auto-max").value = auto.premium_max;
+      $("#auto-candle").value = String(auto.candle_minutes);
+      const sel = $("#auto-expiry");
+      if (sel.dataset.for !== auto.underlying + auto.expiry_date) {
+        sel.dataset.for = auto.underlying + auto.expiry_date;
+        try { const ex = await loadExpiries(auto.underlying); fillSelect(sel, ex.includes(auto.expiry_date) ? ex : [auto.expiry_date, ...ex], auto.expiry_date, expLabel); }
+        catch (_) { fillSelect(sel, [auto.expiry_date], auto.expiry_date, expLabel); }
+      }
+    }
+    for (const input of document.querySelectorAll(".auto-grid input, .auto-grid select")) input.addEventListener("input", () => { autoDirty = true; $("#auto-save").disabled = false; $("#auto-err").textContent = ""; });
+    $("#auto-index").addEventListener("change", async () => {
+      try { const ex = await loadExpiries($("#auto-index").value); fillSelect($("#auto-expiry"), ex, ex[0], expLabel); } catch (e) { $("#auto-err").textContent = e.message; }
+    });
+    async function saveConfig(mutate, errEl) {
+      const fresh = await api("/api/config");
+      const next = {settings: fresh.settings, workers: fresh.workers, mode: fresh.mode, automatic: fresh.automatic, revision: fresh.revision};
+      mutate(next);
+      const saved = await api("/api/config", next);
+      config = {settings: saved.settings, workers: saved.workers, mode: saved.mode, automatic: saved.automatic};
+      return saved;
+    }
+    $("#auto-save").addEventListener("click", async () => {
+      const min = Number($("#auto-min").value), max = Number($("#auto-max").value);
+      if (!(min >= 0.05 && max > min && max <= 5000)) { $("#auto-err").textContent = "Premium range: the second number must be above the first (₹0.05–₹5000)."; return; }
+      try {
+        await saveConfig(c => Object.assign(c.automatic, {underlying: $("#auto-index").value, expiry_date: $("#auto-expiry").value,
+          lots: Number($("#auto-lots").value), premium_min: min, premium_max: max, candle_minutes: Number($("#auto-candle").value)}));
+        autoDirty = false; toast("Automatic settings saved.", "ok"); render();
+      } catch (e) { $("#auto-err").textContent = e.message; }
+    });
+    async function sideCommand(side, target) {
+      if (busy || target === "all") return;
+      if (autoDirty) { toast("Save or undo the settings change first.", "error"); return; }
+      const st = sideState(side), offline = !runtime?.online;
+      const auto = config?.automatic || {}, band = "₹" + auto.premium_min + "–" + auto.premium_max;
+      let ok;
+      if (target === "single") ok = await ask((offline ? "Arm " : "Start ") + side + "?", offline
+        ? side + " starts with SRSI and trades one strike inside " + band + "."
+        : side + " starts now and trades one strike inside " + band + " (" + auto.lots + " lot).", offline ? "Arm" : "Start");
+      else ok = await ask("Turn " + side + " off?", st.held || st.pending
+        ? side + " has " + (st.held ? st.held + " qty open" : "an order pending") + ". It stops buying and sells on its normal exit, then turns off."
+        : offline ? side + " will not start with SRSI." : side + " is flat, so it stops right away.", "Turn off");
+      if (!ok) return;
+      await act(target === "single" ? {action: "automatic_start", sides: [side], capture: "single"} : {action: "automatic_stop", sides: [side]},
+        side + (target === "single" ? (offline ? " armed." : " starting.") : " turned off."));
+    }
+
+    // ---------- mode ----------
+    for (const b of document.querySelectorAll("[data-mode]")) b.addEventListener("click", async () => {
+      const target = b.dataset.mode;
+      if (b.getAttribute("aria-pressed") === "true" || busy) return;
+      const ok = await ask("Switch to " + (target === "manual" ? "Manual" : "Automatic") + "?", target === "manual"
+        ? "Both automatic sides turn off. You add threads yourself."
+        : "Manual threads stop. Automatic picks strikes from your premium band.", "Switch");
+      if (ok) await act({action: "set_mode", mode: target}, "Switched to " + (target === "manual" ? "Manual." : "Automatic."));
+    });
+
+    // ---------- max loss ----------
+    let riskSaved = null;
+    const riskPop = $("#risk-pop");
+    function togglePop(pop, btn, open) {
+      pop.hidden = !open; btn.setAttribute("aria-expanded", String(open));
+      if (open) for (const other of document.querySelectorAll(".popover")) if (other !== pop) { other.hidden = true; }
+    }
+    $("#risk-tile").addEventListener("click", () => togglePop(riskPop, $("#risk-tile"), riskPop.hidden));
+    $("#rules-btn").addEventListener("click", () => togglePop($("#rules-pop"), $("#rules-btn"), $("#rules-pop").hidden));
+    document.addEventListener("click", e => { if (!e.target.closest(".risk")) for (const p of document.querySelectorAll(".popover")) p.hidden = true; });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") for (const p of document.querySelectorAll(".popover")) p.hidden = true; });
+    const riskForm = () => ({enabled: $("#risk-on").checked, amount: Number($("#risk-amount").value),
+      emails: $("#risk-emails").value.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean)});
+    const riskKey = v => JSON.stringify([v.enabled, Number(v.amount), (v.emails || []).map(x => x.toLowerCase())]);
+    const riskDirty = () => riskSaved && riskKey(riskForm()) !== riskKey(riskSaved);
+    function riskCheck() {
+      const f = riskForm(); let err = "";
+      if (!(f.amount >= 100)) err = "Max loss must be at least ₹100.";
+      else { const bad = f.emails.filter(x => !/^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$/.test(x)); if (bad.length) err = "Check: " + bad.join(", "); }
+      $("#risk-err").textContent = err;
+      $("#risk-save").disabled = !riskDirty() || Boolean(err);
+      $("#risk-emails-label").textContent = "Alert emails (" + f.emails.length + ")";
+    }
+    ["risk-on", "risk-amount", "risk-emails"].forEach(id => $("#" + id).addEventListener("input", riskCheck));
+    function renderRisk() {
+      const d = runtime?.max_loss; if (!d) return;
+      const saved = {enabled: d.enabled, amount: d.amount, emails: d.emails || []};
+      if (!riskSaved || !riskDirty()) { $("#risk-on").checked = saved.enabled; $("#risk-amount").value = saved.amount; $("#risk-emails").value = saved.emails.join("\n"); }
+      riskSaved = saved;
+      const pnl = Number(d.pnl) || 0, used = d.enabled ? Math.max(0, Math.min(100, -pnl / d.amount * 100)) : 0;
+      const state = d.tripped ? "hit" : !d.enabled ? "off" : used >= 70 ? "near" : "watching";
+      $("#risk").dataset.state = state;
+      const pnlEl = $("#risk-pnl"); pnlEl.textContent = money(pnl); pnlEl.className = "num " + tone(pnl);
+      $("#risk-max").textContent = d.tripped ? "Hit" : d.enabled ? "−₹" + Number(d.amount).toLocaleString("en-IN") : "Off";
+      $("#risk-max").className = "num" + (d.tripped ? " neg" : "");
+      $("#risk-fill").style.width = (d.tripped ? 100 : used) + "%";
+      $("#risk-tile").title = "Booked " + money(d.realized) + " · Open " + money(d.unrealized) + (d.live ? "" : " · SRSI stopped");
+      const banner = $("#risk-banner");
+      banner.hidden = !d.tripped;
+      if (d.tripped) {
+        const mail = d.email_status?.tripped;
+        banner.textContent = "Hit at " + (d.tripped_at || "").slice(11, 16) + " (" + money(d.trip_pnl) + "). " + ((d.positions || []).length ? "Selling open positions. " : "All positions closed. ")
+          + "Trading is off until the next trading day." + (mail ? mail.sent?.length ? " Email sent." : " Email failed." : "");
+      }
+      riskCheck();
+    }
+    $("#risk-save").addEventListener("click", async () => {
+      const f = riskForm(), loss = -(Number(runtime?.max_loss?.pnl) || 0);
+      if (f.enabled && !runtime?.max_loss?.tripped && loss >= f.amount
+          && !await ask("Stop trading now?", "Today's loss is already " + money(-loss) + ". Saving this sells every open position now and turns all threads off for today.", "Save and stop", true)) return;
+      if (riskSaved?.enabled && !f.enabled && !await ask("Turn max loss off?", "Trading continues with no daily loss limit.", "Turn off")) return;
+      try { const data = await api("/api/risk", f); riskSaved = null; acceptRuntime(data); toast(f.enabled ? "Max loss set to " + money(-f.amount, false) + "." : "Max loss off.", "ok"); }
+      catch (e) { $("#risk-err").textContent = e.message; }
+    });
+
+    // ---------- rules ----------
+    let rulesDirty = false;
+    function renderRules() {
+      const s = config?.settings; if (!s) return;
+      const automatic = (runtime?.mode || config?.mode) === "automatic";
+      const candle = automatic ? config.automatic?.candle_minutes : s.candle_minutes;
+      $("#rules-text").textContent = "K " + s.entry_k + " → " + s.exit_k_level + " · SL " + s.stop_loss_points + " · " + candle + "m";
+      $("#rules-btn").title = automatic ? "Automatic uses the candle in its Settings row (" + candle + " min)" : "Manual threads use the candle set here (" + candle + " min)";
+      // One candle per mode: Automatic has its own in Settings, so Rules shows it only for Manual.
+      $("#rule-candle-field").hidden = automatic;
+      $("#rules-note").textContent = automatic
+        ? "Applies when a side starts. The candle for Automatic is in its Settings row."
+        : "Applies to threads you add after saving. Running threads keep their rules.";
+      if (!rulesDirty) { $("#rule-entry").value = s.entry_k; $("#rule-exit").value = s.exit_k_level; $("#rule-sl").value = s.stop_loss_points; $("#rule-candle").value = String(s.candle_minutes); }
+      $("#rules-save").disabled = !rulesDirty;
+    }
+    for (const id of ["rule-entry", "rule-exit", "rule-sl", "rule-candle"]) $("#" + id).addEventListener("input", () => { rulesDirty = true; $("#rules-save").disabled = false; $("#rules-err").textContent = ""; });
+    $("#rules-save").addEventListener("click", async () => {
+      try {
+        await saveConfig(c => Object.assign(c.settings, {entry_k: Number($("#rule-entry").value), exit_k_level: Number($("#rule-exit").value),
+          stop_loss_points: Number($("#rule-sl").value), candle_minutes: Number($("#rule-candle").value)}));
+        rulesDirty = false; toast("Rules saved. New threads use them.", "ok"); render();
+      } catch (e) { $("#rules-err").textContent = e.message; }
+    });
+
+    // ---------- option chain ----------
+    const visibleCount = () => Math.max(11, Math.min(31, Math.floor(($("#chain-scroll").clientHeight - 32) / 37)));
+    function center() { return Number($("#chain-center").value) || Number(chain?.atm_strike) || 0; }
+    function visibleRows() {
+      if (!chain) return [];
+      const c = center(), n = visibleCount();
+      return [...chain.chain].sort((a, b) => Math.abs(a.strike - c) - Math.abs(b.strike - c)).slice(0, n).sort((a, b) => a.strike - b.strike);
+    }
+    function legLtp(leg) { if (!leg) return null; const live = quotes.get(chain.option_exchange + ":" + leg.symbol); return live ? live.ltp : leg.ltp; }
+    function renderChain() {
+      const body = $("#chain-rows");
+      body.replaceChildren();
+      for (const item of visibleRows()) {
+        const tr = el("tr");
+        if (Number(chain.atm_strike) === item.strike) tr.className = "atm";
+        const cells = {};
+        for (const side of ["CE", "PE"]) {
+          const leg = item[side.toLowerCase()];
+          const td = el("td", {className: side.toLowerCase()});
+          const price = el("span", {className: "px", textContent: px(legLtp(leg))});
+          if (leg) { price.dataset.sym = leg.symbol; td.dataset.sym = leg.symbol; }
+          const btn = el("button", {type: "button", className: "cell-btn"});
+          btn.dataset.strike = item.strike; btn.dataset.side = side;
+          const q = el("div", {className: "q"}, price, el("span", {className: "slot"}), btn);
+          td.append(q); cells[side] = td;
+        }
+        const strike = el("td", {className: "strike num", textContent: item.strike});
+        if (Number(chain.atm_strike) === item.strike) strike.append(el("small", {textContent: "ATM"}));
+        tr.append(cells.CE, strike, cells.PE);
+        body.append(tr);
+      }
+      $("#chain-atm-val").textContent = chain.atm_strike || "—";
+      renderQuotes(); markChain();
+    }
+    function renderQuotes() {
+      if (!chain) return;
+      for (const span of document.querySelectorAll("#chain-rows .px[data-sym]")) {
+        const key = chain.option_exchange + ":" + span.dataset.sym;
+        const live = quotes.get(key);
+        const leg = chain.chain.flatMap(r => [r.ce, r.pe]).find(l => l?.symbol === span.dataset.sym);
+        span.textContent = px(live ? live.ltp : leg?.ltp); span.classList.toggle("live", Boolean(live));
+      }
+      const spot = quotes.get(chain.underlying_exchange + ":" + chain.underlying);
+      $("#chain-spot").textContent = px(spot ? spot.ltp : chain.underlying_ltp);
+    }
+    function threadFor(symbol) { return (config?.workers || []).find(r => symbolOf(r) === symbol); }
+    function heldMap() {
+      const held = new Map();
+      for (const w of runtime?.workers || []) {
+        const qty = Number(w.quantity || 0); if (!(qty > 0)) continue;
+        const sym = w.configuration?.automatic ? w.selection?.symbol : w.leg?.symbol || (w.configuration && symbolOf({...w.configuration}));
+        if (sym) held.set(sym, (held.get(sym) || 0) + qty);
+      }
+      return held;
+    }
+    function markChain() {
+      if (!chain) return;
+      const manual = (runtime?.mode || config?.mode) === "manual", held = heldMap();
+      for (const td of document.querySelectorAll("#chain-rows td[data-sym]")) {
+        const sym = td.dataset.sym, row = threadFor(sym), qty = held.get(sym) || 0;
+        const btn = td.querySelector(".cell-btn"), slot = td.querySelector(".slot");
+        td.classList.toggle("has-thread", Boolean(row) && manual);
+        td.classList.toggle("is-held", qty > 0);
+        slot.replaceChildren(...(qty > 0 ? [el("span", {className: "tag", textContent: "Held " + qty})] : []));
+        btn.hidden = !manual;
+        if (!manual) continue;
+        const v = row ? threadView(row) : null;
+        btn.className = "cell-btn" + (row ? " x" : "");
+        btn.textContent = row ? "✕" : "+";
+        btn.disabled = busy || !runtime || (v?.w?.removing) || v?.w?.state === "halted";
+        const label = (row ? (v?.w?.removing ? "Deleting after exit: " : "Stop and delete ") : "Add thread for ") + btn.dataset.strike + " " + btn.dataset.side;
+        btn.title = label; btn.setAttribute("aria-label", label);
+        btn.onclick = () => row ? removeThread(row) : openAdd({underlying: chain.underlying, expiry_date: chain.expiry_date, strike_price: Number(btn.dataset.strike), option_type: btn.dataset.side});
+      }
+      for (const td of document.querySelectorAll("#chain-rows td:not([data-sym]) .cell-btn")) td.hidden = true;
+    }
+    function closeFeed() { feed?.close(); feed = null; }
+    function startFeed() {
+      closeFeed(); quotes = new Map();
+      if (!chain || !center()) return;
+      $("#chain-feed").textContent = "Connecting live prices…";
+      const f = new EventSource(API + "/api/live?" + new URLSearchParams({underlying: chain.underlying, expiry_date: chain.expiry_date, center: center()}));
+      feed = f;
+      f.onmessage = e => {
+        if (feed !== f) return;
+        try {
+          const u = JSON.parse(e.data);
+          for (const [k, v] of Object.entries(u.prices || {})) quotes.set(k, v);
+          renderQuotes();
+          $("#chain-feed").textContent = quotes.size ? "Live" : u.connected ? "Live · waiting for quotes" : "Snapshot · reconnecting";
+        } catch (_) {}
+      };
+      f.onerror = () => { if (feed === f) $("#chain-feed").textContent = "Snapshot · reconnecting"; };
+    }
+    async function loadChain() {
+      const serial = ++chainSerial;
+      closeFeed();
+      const underlying = $("#chain-index").value, expiry = $("#chain-expiry").value;
+      if (!expiry) return;
+      $("#chain-hint").textContent = "Loading…";
+      try {
+        const data = await api("/api/chain?" + new URLSearchParams({underlying, expiry_date: expiry}));
+        if (serial !== chainSerial) return;
+        chain = data; $("#chain-center").value = ""; $("#chain-center").step = STRIKE_STEP[underlying] || 50;
+        $("#chain-hint").textContent = chain.chain.length + " strikes";
+        renderChain(); startFeed();
+      } catch (e) { if (serial === chainSerial) { $("#chain-hint").textContent = e.message; $("#chain-feed").textContent = "Not connected"; } }
+    }
+    async function loadChainExpiries(prefer) {
+      const index = $("#chain-index").value;
+      try { const ex = await loadExpiries(index); fillSelect($("#chain-expiry"), ex, prefer || ex[0], expLabel); await loadChain(); }
+      catch (e) { $("#chain-hint").textContent = e.message; }
+    }
+    $("#chain-index").addEventListener("change", () => loadChainExpiries());
+    $("#chain-expiry").addEventListener("change", loadChain);
+    $("#chain-center").addEventListener("change", () => { if (chain) { renderChain(); startFeed(); } });
+    $("#chain-atm").addEventListener("click", () => { $("#chain-center").value = ""; if (chain) { renderChain(); startFeed(); } });
+    let resizeTimer; addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (chain) { renderChain(); startFeed(); } }, 250); });
+    // The chain snapshot on the server refreshes on its own; pick up new strikes/ATM every 30 s.
+    setInterval(async () => {
+      if (!chain || document.hidden) return;
+      try { const data = await api("/api/chain?" + new URLSearchParams({underlying: chain.underlying, expiry_date: chain.expiry_date}));
+        if (data.atm_strike !== chain.atm_strike || data.chain.length !== chain.chain.length) { chain = data; renderChain(); } else chain = data; } catch (_) {}
+    }, 30000);
+
+    // ---------- start ----------
+    (async function init() {
+      fillSelect($("#chain-index"), INDEXES, "NIFTY");
+      try {
+        const [cfg, rt] = await Promise.all([api("/api/config"), api("/api/runtime")]);
+        config = {settings: cfg.settings, workers: cfg.workers, mode: cfg.mode, automatic: cfg.automatic};
+        acceptRuntime(rt);
+      } catch (e) { runtimeError = e.message; render(); }
+      const mode = config?.mode || "manual";
+      const index = mode === "automatic" ? config.automatic.underlying : config?.workers?.[0]?.underlying || "NIFTY";
+      fillSelect($("#chain-index"), INDEXES, index);
+      loadChainExpiries(mode === "automatic" ? config.automatic.expiry_date : config?.workers?.[0]?.expiry_date);
+      setInterval(() => { if (!document.hidden && !busy) refreshRuntime(); }, 1500);
+    })();
+  </script>
+</body>
+</html>

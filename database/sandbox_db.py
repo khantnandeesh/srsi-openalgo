@@ -1,7 +1,7 @@
 # database/sandbox_db.py
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytz
 
@@ -214,7 +214,7 @@ class SandboxFunds(Base):
     user_id = Column(String(50), unique=True, nullable=False, index=True)
 
     # Fund balances
-    total_capital = Column(DECIMAL(15, 2), default=10000000.00)  # ₹1 Crore starting capital
+    total_capital = Column(DECIMAL(15, 2), default=10000000.00)  # ₹1 Crore global starting capital
     available_balance = Column(DECIMAL(15, 2), default=10000000.00)  # Available for trading
     used_margin = Column(DECIMAL(15, 2), default=0.00)  # Margin blocked in positions
 
@@ -267,6 +267,35 @@ class SandboxDailyPnL(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "date", name="unique_user_daily_pnl"),
         Index("idx_user_date", "user_id", "date"),
+    )
+
+
+class SandboxPnLSnapshot(Base):
+    """Persistent account P&L/equity observations with naive UTC timestamps.
+
+    Observations retain their actual capture time. The uniqueness constraint
+    prevents duplicate observations at the same timestamp for one user.
+    Realized P&L is cumulative; daily counters do not clear this history.
+    """
+
+    __tablename__ = "sandbox_pnl_snapshots"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(50), nullable=False, index=True)
+    timestamp = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC).replace(tzinfo=None)
+    )
+    realized_pnl = Column(DECIMAL(15, 2), nullable=False, default=0.00)
+    unrealized_pnl = Column(DECIMAL(15, 2), nullable=False, default=0.00)
+    total_pnl = Column(DECIMAL(15, 2), nullable=False, default=0.00)
+    equity = Column(DECIMAL(15, 2), nullable=False, default=0.00)
+    available_balance = Column(DECIMAL(15, 2), nullable=False, default=0.00)
+    used_margin = Column(DECIMAL(15, 2), nullable=False, default=0.00)
+    total_capital = Column(DECIMAL(15, 2), nullable=False, default=50000.00)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "timestamp", name="unique_user_pnl_snapshot"),
+        Index("idx_sandbox_pnl_user_timestamp", "user_id", "timestamp"),
     )
 
 

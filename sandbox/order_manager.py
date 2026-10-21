@@ -262,6 +262,26 @@ class OrderManager:
                     except Exception as e:
                         logger.debug(f"Pre-fetched quote unusable: {e}")
 
+                # Attempt 0b: Use a fresh WebSocket LTP when one is cached. Open
+                # positions are subscribed for MTM, so exits normally hit this and
+                # skip the broker quotes REST call (which can hang for tens of seconds).
+                if not quote_fetch_success:
+                    try:
+                        from services.market_data_service import get_market_data_service
+
+                        market_data = get_market_data_service()
+                        if market_data.is_data_fresh(symbol, exchange, max_age_seconds=3):
+                            ws_ltp = market_data.get_ltp_value(symbol, exchange)
+                            if ws_ltp and Decimal(str(ws_ltp)) > 0:
+                                margin_calculation_price = Decimal(str(ws_ltp))
+                                cached_quote = {"ltp": float(ws_ltp)}
+                                logger.info(
+                                    f"Using fresh WebSocket LTP {margin_calculation_price} for MARKET order"
+                                )
+                                quote_fetch_success = True
+                    except Exception as e:
+                        logger.debug(f"WebSocket LTP unavailable for {symbol}: {e}")
+
                 # Attempt 1: Fetch live quote with retry
                 if not quote_fetch_success:
                     for attempt in range(3):

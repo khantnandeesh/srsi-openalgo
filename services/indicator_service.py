@@ -455,10 +455,26 @@ def clamp_history_range(start_date: str, end_date: str, interval: str) -> tuple[
     return start_date, end_date
 
 
-def _resolve_params(name: str, params: dict[str, Any] | None) -> dict[str, Any]:
+def _resolve_params(name: str, params: dict[str, Any] | None, fn: Any = None) -> dict[str, Any]:
     resolved = dict(params or {})
     for key, value in REQUIRED_PARAM_DEFAULTS.get(name, {}).items():
         resolved.setdefault(key, value)
+    
+    if name == 'stochrsi':
+        if 'period' in resolved:
+            p = resolved.pop('period')
+            resolved.setdefault('rsi_period', p)
+            resolved.setdefault('stoch_period', p)
+
+    if fn is not None:
+        import inspect
+        try:
+            sig = inspect.signature(fn)
+            valid_keys = set(sig.parameters.keys())
+            resolved = {k: v for k, v in resolved.items() if k in valid_keys}
+        except Exception:
+            pass
+
     return resolved
 
 
@@ -710,7 +726,7 @@ def compute_indicator(
     if fn is None:
         raise ValueError(f"unknown indicator '{indicator_name}'")
 
-    resolved_params = _resolve_params(name, params)
+    resolved_params = _resolve_params(name, params, fn)
 
     if source_series is not None:
         if not is_single_series_indicator(name):

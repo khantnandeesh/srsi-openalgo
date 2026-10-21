@@ -1,0 +1,39 @@
+{
+  "candidate_signals": 818,
+  "blocked_candidate_signals": 576,
+  "entry_minutes_with_multiple_signalling_expiries": 43,
+  "unresolved_sides": [],
+  "symbols": 434,
+  "minute_bars": 754261,
+  "expiries": [
+    "06OCT26",
+    "13OCT26",
+    "19OCT26",
+    "27OCT26",
+    "03NOV26",
+    "23NOV26",
+    "29DEC26"
+  ],
+  "trades": 176,
+  "resolved_trades": 176,
+  "unresolved_trades": 0,
+  "gross_pnl_rupees": -7426.250000000035,
+  "sell_slippage_rupees": 57200.0,
+  "charges_rupees": 32871.2171963875,
+  "net_pnl_rupees": -97497.46719638753,
+  "positive_days": 6,
+  "negative_days": 15,
+  "zero_days": 0,
+  "gap_affected_trades": 122,
+  "exit_reasons": {
+    "SRSI_EXIT": 133,
+    "STOP": 38,
+    "ASSUMED_EOD_LAST_OBSERVED": 3,
+    "RESEARCH_EOD": 2
+  },
+  "original_invalid_net_pnl_rupees": 98298.37051173247,
+  "assumed_eod_exits": 3,
+  "median_assumed_exit_staleness_minutes": 6.0,
+  "max_assumed_exit_staleness_minutes": 109.0,
+  "raw_gross_after_slippage_rupees": -64626.25000000004
+}

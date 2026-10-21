@@ -14,6 +14,7 @@ export interface Tool {
 }
 
 export const tools: Tool[] = [
+  {title: "Backtest SRSI", description: "Test option contracts with one-minute history, saved SRSI rules and daily P&L", href: "/backtest-srsi", color: "bg-zinc-500"},
   {
     title: 'Strategy Builder',
     description:

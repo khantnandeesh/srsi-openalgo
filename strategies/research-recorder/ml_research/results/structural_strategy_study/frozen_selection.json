@@ -1,0 +1,11 @@
+{
+  "rule": {
+    "id": "opening_range_breakout",
+    "description": "Frozen09:15-09:45spotrange;firstqualifying1mclosebreakoutperdirection/day",
+    "max_trades": 1
+  },
+  "passed_development_validation": false,
+  "selected_at_utc": "2026-10-02T14:51:37.468331+00:00",
+  "reason": "Largestminimumdevelopment/validationdailymean;lateroutcomesexcluded;diagnosticselectiononlyifnonepasses",
+  "warning": "ALLdatesarealreadyexposedexploratoryretrospectiveobservations;noneisgenuineuntouchedholdout;no tickqueue/5secondlimitfillverification;missingbarsexitpathrisk"
+}

@@ -385,7 +385,10 @@ export class MarketDataManager {
         return
       }
 
-      const wsUrl = configData.websocket_url
+      let wsUrl = configData.websocket_url
+      if (window.location.protocol === 'https:' && wsUrl.startsWith('ws://')) {
+        wsUrl = wsUrl.replace('ws://', 'wss://')
+      }
       const socket = new WebSocket(wsUrl)
 
       socket.onopen = async () => {

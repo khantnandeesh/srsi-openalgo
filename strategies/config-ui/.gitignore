@@ -1,0 +1,26 @@
+# Secrets and personal data: never commit
+.env
+*.env
+*.private.json
+risk.json
+*.sqlite3
+# Runtime state written by the running strategy / page
+workers.json
+automatic_contracts.json
+automatic_status.json
+runtime_stop_intents.json
+max_loss_day.json
+remove_after_exit.json
+stopped_after_sl.json
+*.pid
+*.sock
+*.lock
+# Logs, caches, local backups
+logs/
+*.log
+__pycache__/
+*.bak
+*.before-*
+config.html.before-*
+.automatic-performance-*/
+.external-exit-patch-*/

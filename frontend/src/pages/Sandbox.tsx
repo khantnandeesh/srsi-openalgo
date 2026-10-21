@@ -55,6 +55,7 @@ const DAYS_OF_WEEK = [
 ]
 
 const CAPITAL_OPTIONS = [
+  { value: '50000', label: '50,000 (50 Thousand)' },
   { value: '100000', label: '1,00,000 (1 Lakh)' },
   { value: '500000', label: '5,00,000 (5 Lakhs)' },
   { value: '1000000', label: '10,00,000 (10 Lakhs)' },
@@ -327,7 +328,7 @@ export default function Sandbox() {
 
     // Starting capital selector
     if (configKey === 'starting_capital') {
-      const currentValue = parseFloat(configData.value || '10000000').toFixed(0)
+      const currentValue = parseFloat(configData.value || '50000').toFixed(0)
       return (
         <div className="flex gap-2">
           <Select value={currentValue} onValueChange={(value) => updateConfig(configKey, value)}>
@@ -478,7 +479,7 @@ export default function Sandbox() {
                   <p className="font-semibold">This action will:</p>
                   <ul className="list-disc list-inside space-y-1 ml-4 text-sm">
                     <li>Delete all orders, trades, positions, and holdings</li>
-                    <li>Reset funds to starting capital (1.00 Crore)</li>
+                    <li>Reset funds to the default starting capital (₹50,000)</li>
                     <li>Reset all configuration values to defaults</li>
                     <li>Clear all historical data</li>
                   </ul>

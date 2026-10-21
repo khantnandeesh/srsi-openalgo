@@ -891,3 +891,8 @@ def serve_docs(filename):
     if not docs_dir.exists():
         return "Docs not found", 404
     return send_from_directory(docs_dir, filename)
+
+
+@react_bp.route("/backtest-srsi")
+def react_backtest_srsi():
+    return serve_react_app()

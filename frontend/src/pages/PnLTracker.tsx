@@ -2,15 +2,18 @@ import { AlertTriangle, Camera, RefreshCw, TrendingDown, TrendingUp } from 'luci
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { makeFormatCurrency } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { showToast } from '@/utils/toast'
 
-async function fetchCSRFToken(): Promise<string> {
+async function fetchCSRFToken(signal: AbortSignal): Promise<string> {
   const response = await fetch('/auth/csrf-token', {
     credentials: 'include',
+    signal,
   })
+  if (!response.ok) throw new Error('Unable to authenticate the P&L request')
   const data = await response.json()
   return data.csrf_token
 }
@@ -60,17 +63,83 @@ interface PnLData {
   max_drawdown: number
   pnl_series: PnLDataPoint[]
   drawdown_series: PnLDataPoint[]
+  opening_balance?: number
+  notice?: string
+  curve_type?: string
+}
+
+interface DateRange {
+  start: string
+  end: string
+}
+
+function todayIST(): string {
+  return new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+function validDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const date = new Date(value + 'T00:00:00Z')
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+}
+
+function chartPoints(points: PnLDataPoint[] = []) {
+  // The chart requires unique, ordered timestamps. Keep the latest sample if
+  // the backend returns multiple points in the same second.
+  const values = new Map<number, number>()
+  for (const point of points) {
+    const timestamp = Math.floor(point.time / 1000)
+    if (Number.isFinite(timestamp) && Number.isFinite(point.value)) {
+      values.set(timestamp, point.value)
+    }
+  }
+  return [...values.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([time, value]) => ({
+      time: time as import('lightweight-charts').UTCTimestamp,
+      value,
+    }))
+}
+
+function formatChartTime(time: import('lightweight-charts').Time, includeDate: boolean): string {
+  const date =
+    typeof time === 'number'
+      ? new Date(time * 1000)
+      : typeof time === 'string'
+        ? new Date(time + 'T00:00:00Z')
+        : new Date(Date.UTC(time.year, time.month - 1, time.day))
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    ...(includeDate ? { day: '2-digit' as const, month: 'short' as const } : {}),
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
 }
 
 export default function PnLTracker() {
-  const { mode } = useThemeStore()
-  const isDarkMode = mode === 'dark'
+  const { mode, appMode } = useThemeStore()
+  const isAnalyzeMode = appMode === 'analyzer'
+  const isDarkMode = isAnalyzeMode || mode === 'dark'
   const { user } = useAuthStore()
   const formatCurrency = useMemo(() => makeFormatCurrency(user?.broker), [user?.broker])
 
   // State
   const [isLoading, setIsLoading] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
+  const [draftRange, setDraftRange] = useState<DateRange>(() => {
+    const today = todayIST()
+    return { start: today, end: today }
+  })
+  const [appliedRange, setAppliedRange] = useState<DateRange>(() => {
+    const today = todayIST()
+    return { start: today, end: today }
+  })
+  const [loadedRange, setLoadedRange] = useState<DateRange | null>(null)
+  const [loadError, setLoadError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [pointCount, setPointCount] = useState<number | null>(null)
+  const [openingBalance, setOpeningBalance] = useState<number | null>(null)
   const [metrics, setMetrics] = useState({
     currentMtm: 0,
     maxMtm: 0,
@@ -87,6 +156,18 @@ export default function PnLTracker() {
   const pnlSeriesRef = useRef<ISeriesApi<'Baseline'> | null>(null)
   const drawdownSeriesRef = useRef<ISeriesApi<'Baseline'> | null>(null)
   const watermarkRef = useRef<HTMLDivElement | null>(null)
+  const requestControllerRef = useRef<AbortController | null>(null)
+  const requestSequenceRef = useRef(0)
+  const latestDataRef = useRef<PnLData | null>(null)
+  const includeDateRef = useRef(false)
+  const displayedRange = loadedRange || appliedRange
+  includeDateRef.current = isAnalyzeMode && displayedRange.start !== displayedRange.end
+
+  const renderChartData = useCallback((data: PnLData, fitContent = true) => {
+    pnlSeriesRef.current?.setData(chartPoints(data.pnl_series))
+    drawdownSeriesRef.current?.setData(chartPoints(data.drawdown_series))
+    if (fitContent) chartRef.current?.timeScale().fitContent()
+  }, [])
   // Stable ref for formatCurrency — always holds the latest function without
   // being a useCallback/useEffect dependency.  The chart price formatter reads
   // from this ref so it always uses the current broker format, while initChart
@@ -150,14 +231,10 @@ export default function PnLTracker() {
         borderColor: isDarkMode ? 'rgba(166, 173, 187, 0.2)' : 'rgba(0, 0, 0, 0.2)',
         timeVisible: true,
         secondsVisible: false,
-        tickMarkFormatter: (time: number) => {
-          const date = new Date(time * 1000)
-          const istOffset = 5.5 * 60 * 60 * 1000
-          const istDate = new Date(date.getTime() + istOffset)
-          const hours = istDate.getUTCHours().toString().padStart(2, '0')
-          const minutes = istDate.getUTCMinutes().toString().padStart(2, '0')
-          return `${hours}:${minutes}`
-        },
+        tickMarkFormatter: (time: import('lightweight-charts').Time) => formatChartTime(time, includeDateRef.current),
+      },
+      localization: {
+        timeFormatter: (time: import('lightweight-charts').Time) => formatChartTime(time, includeDateRef.current),
       },
       crosshair: {
         mode: CrosshairMode.Normal,
@@ -283,81 +360,93 @@ export default function PnLTracker() {
     }
   }, [isDarkMode])
 
-  // Load PnL data
-  const loadPnLData = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const csrfToken = await fetchCSRFToken()
+  // Date changes and mode changes cancel stale requests. A quiet refresh keeps
+  // the previous curve visible and preserves the user's chart zoom.
+  const loadPnLData = useCallback(async (quiet = false) => {
+    if (quiet && requestControllerRef.current) return
+    requestControllerRef.current?.abort()
+    const controller = new AbortController()
+    requestControllerRef.current = controller
+    const sequence = ++requestSequenceRef.current
+    if (!quiet) setIsLoading(true)
 
-      const response = await fetch('/pnltracker/api/pnl', {
+    try {
+      const csrfToken = await fetchCSRFToken(controller.signal)
+      const params = new URLSearchParams()
+      if (isAnalyzeMode) {
+        params.set('start_date', appliedRange.start)
+        params.set('end_date', appliedRange.end)
+      }
+      const url = '/pnltracker/api/pnl' + (params.size ? '?' + params.toString() : '')
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrfToken,
         },
         credentials: 'include',
+        signal: controller.signal,
       })
-
-      if (!response.ok) throw new Error('Failed to fetch PnL data')
-
       const result = await response.json()
-
-      if (result.status === 'success') {
-        const data: PnLData = result.data
-
-        // Update metrics
-        setMetrics({
-          currentMtm: data.current_mtm,
-          maxMtm: data.max_mtm,
-          maxMtmTime: data.max_mtm_time || '--:--',
-          minMtm: data.min_mtm,
-          minMtmTime: data.min_mtm_time || '--:--',
-          maxDrawdown: data.max_drawdown,
-        })
-
-        // Update chart
-        if (pnlSeriesRef.current && data.pnl_series && Array.isArray(data.pnl_series)) {
-          const pnlData = data.pnl_series
-            .map((point) => ({
-              time: Math.floor(point.time / 1000) as import('lightweight-charts').UTCTimestamp,
-              value: point.value,
-            }))
-            .sort((a, b) => a.time - b.time)
-
-          if (pnlData.length > 0) {
-            pnlSeriesRef.current.setData(pnlData)
-          }
-        }
-
-        if (
-          drawdownSeriesRef.current &&
-          data.drawdown_series &&
-          Array.isArray(data.drawdown_series)
-        ) {
-          const drawdownData = data.drawdown_series
-            .map((point) => ({
-              time: Math.floor(point.time / 1000) as import('lightweight-charts').UTCTimestamp,
-              value: point.value,
-            }))
-            .sort((a, b) => a.time - b.time)
-
-          if (drawdownData.length > 0) {
-            drawdownSeriesRef.current.setData(drawdownData)
-          }
-        }
-
-        if (chartRef.current) {
-          chartRef.current.timeScale().fitContent()
-        }
-      } else {
-        showToast.error(result.message || 'Failed to load PnL data', 'positions')
+      if (!response.ok || result.status !== 'success') {
+        throw new Error(result.message || 'Failed to load P&L data')
       }
-    } catch (_error) {
-      showToast.error('Failed to load PnL data. Please try again.', 'positions')
+      if (sequence !== requestSequenceRef.current) return
+
+      const data: PnLData = result.data
+      latestDataRef.current = data
+      setLoadedRange(isAnalyzeMode ? { ...appliedRange } : null)
+      setMetrics({
+        currentMtm: data.current_mtm,
+        maxMtm: data.max_mtm,
+        maxMtmTime: data.max_mtm_time || '--:--',
+        minMtm: data.min_mtm,
+        minMtmTime: data.min_mtm_time || '--:--',
+        maxDrawdown: data.max_drawdown,
+      })
+      setNotice(data.notice || '')
+      setOpeningBalance(
+        typeof data.opening_balance === 'number' && data.opening_balance > 0
+          ? data.opening_balance
+          : null
+      )
+      setPointCount(Array.isArray(data.pnl_series) ? data.pnl_series.length : 0)
+      setLoadError('')
+      renderChartData(data, !quiet)
+    } catch (error) {
+      if (controller.signal.aborted || sequence !== requestSequenceRef.current) return
+      const message = error instanceof Error ? error.message : 'Failed to load P&L data'
+      setLoadError(message)
+      if (!quiet) showToast.error(message, 'positions')
     } finally {
-      setIsLoading(false)
+      if (sequence === requestSequenceRef.current) {
+        requestControllerRef.current = null
+        setIsLoading(false)
+      }
     }
-  }, [])
+  }, [isAnalyzeMode, appliedRange, renderChartData])
+
+  const applyDateRange = () => {
+    let error = ''
+    if (!validDate(draftRange.start) || !validDate(draftRange.end)) {
+      error = 'Choose a valid start and end date.'
+    } else if (draftRange.start > draftRange.end) {
+      error = 'The start date must be on or before the end date.'
+    } else if (draftRange.end > todayIST()) {
+      error = 'The end date cannot be in the future.'
+    }
+    if (error) {
+      setLoadError(error)
+      showToast.error(error, 'positions')
+      return
+    }
+    setLoadError('')
+    if (draftRange.start === appliedRange.start && draftRange.end === appliedRange.end) {
+      void loadPnLData()
+    } else {
+      setAppliedRange({ ...draftRange })
+    }
+  }
 
   // Take screenshot - html2canvas-pro supports oklch colors natively
   const takeScreenshot = async () => {
@@ -431,41 +520,49 @@ export default function PnLTracker() {
     }
   }
 
-  // Initialize chart and load data
+  // Chart lifecycle is independent of fetches and date edits. Theme changes
+  // redraw the cached response without issuing duplicate requests.
   useEffect(() => {
     const resizeCleanup = initChart()
-    loadPnLData()
-
+    if (latestDataRef.current) renderChartData(latestDataRef.current)
     return () => {
-      // Remove the resize listener registered inside initChart
       resizeCleanup?.()
-      if (chartRef.current) {
-        chartRef.current.remove()
-        chartRef.current = null
-      }
-      if (watermarkRef.current?.parentNode) {
-        watermarkRef.current.parentNode.removeChild(watermarkRef.current)
-        watermarkRef.current = null
-      }
+      chartRef.current?.remove()
+      chartRef.current = null
+      pnlSeriesRef.current = null
+      drawdownSeriesRef.current = null
+      watermarkRef.current?.remove()
+      watermarkRef.current = null
     }
-  }, [initChart, loadPnLData])
+  }, [initChart, renderChartData])
 
-  // Re-initialize chart on theme change
   useEffect(() => {
-    if (chartRef.current) {
-      const resizeCleanup = initChart()
-      loadPnLData()
-      return resizeCleanup
+    void loadPnLData()
+    const refreshTimer = window.setInterval(() => {
+      const today = todayIST()
+      // Historical ranges remain stable. Refresh Analyze data every 30 seconds
+      // only when the selected range includes the current IST date.
+      if (isAnalyzeMode && appliedRange.start <= today && appliedRange.end >= today) {
+        void loadPnLData(true)
+      }
+    }, 30_000)
+    return () => {
+      window.clearInterval(refreshTimer)
+      ++requestSequenceRef.current
+      requestControllerRef.current?.abort()
+      requestControllerRef.current = null
     }
-  }, [initChart, loadPnLData])
+  }, [loadPnLData, isAnalyzeMode, appliedRange])
 
   return (
     <div className="container mx-auto py-6 px-4">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold">PnL Tracker</h1>
-          <p className="text-muted-foreground">Monitor your intraday profit and loss</p>
+          <p className="text-muted-foreground">
+            {isAnalyzeMode ? 'Analyze account P&L across your selected dates' : 'Monitor your intraday profit and loss'}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={takeScreenshot} disabled={isCapturing}>
@@ -481,7 +578,7 @@ export default function PnLTracker() {
               </>
             )}
           </Button>
-          <Button onClick={loadPnLData} disabled={isLoading}>
+          <Button onClick={() => void loadPnLData()} disabled={isLoading}>
             {isLoading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
@@ -499,13 +596,60 @@ export default function PnLTracker() {
 
       {/* Screenshot Container */}
       <div ref={screenshotContainerRef}>
+        {isAnalyzeMode && (
+          <div className="mb-6 rounded-lg border bg-card p-4">
+            <form
+              className="flex flex-wrap items-end gap-3"
+              onSubmit={(event) => {
+                event.preventDefault()
+                applyDateRange()
+              }}
+            >
+              <label htmlFor="pnl-start-date" className="grid gap-1.5 text-sm font-medium">
+                Start date
+                <Input
+                  id="pnl-start-date"
+                  type="date"
+                  value={draftRange.start}
+                  max={todayIST()}
+                  onChange={(event) => setDraftRange((range) => ({ ...range, start: event.target.value }))}
+                  className="w-44"
+                  required
+                />
+              </label>
+              <label htmlFor="pnl-end-date" className="grid gap-1.5 text-sm font-medium">
+                End date
+                <Input
+                  id="pnl-end-date"
+                  type="date"
+                  value={draftRange.end}
+                  max={todayIST()}
+                  onChange={(event) => setDraftRange((range) => ({ ...range, end: event.target.value }))}
+                  className="w-44"
+                  required
+                />
+              </label>
+              <Button type="submit" disabled={isLoading}>Apply range</Button>
+            </form>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Showing {displayedRange.start} to {displayedRange.end}, inclusive · IST
+              {appliedRange.end >= todayIST() ? ' · Updates every 30 seconds' : ''}
+            </p>
+          </div>
+        )}
+        {loadError && (
+          <div role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            {loadError}{pointCount !== null ? ' The last loaded curve is still displayed.' : ''}
+          </div>
+        )}
+        {notice && <p className="mb-4 text-sm text-muted-foreground">{notice}</p>}
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Current MTM */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Current MTM
+                {isAnalyzeMode ? 'Range P&L' : 'Current MTM'}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -514,12 +658,14 @@ export default function PnLTracker() {
               >
                 {formatCurrency(metrics.currentMtm)}
               </div>
-              <div
-                className={`text-sm ${metrics.currentMtm >= 0 ? 'text-green-500' : 'text-red-500'}`}
-              >
-                {metrics.currentMtm >= 0 ? '+' : ''}
-                {((metrics.currentMtm / 100000) * 100).toFixed(2)}%
-              </div>
+              {openingBalance !== null && (
+                <div
+                  className={`text-sm ${metrics.currentMtm >= 0 ? 'text-green-500' : 'text-red-500'}`}
+                >
+                  {metrics.currentMtm >= 0 ? '+' : ''}
+                  {((metrics.currentMtm / openingBalance) * 100).toFixed(2)}% of opening equity
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -576,7 +722,7 @@ export default function PnLTracker() {
         <Card>
           <CardHeader>
             <div className="flex flex-wrap justify-between items-center gap-2">
-              <CardTitle>Intraday PnL Curve</CardTitle>
+              <CardTitle>{isAnalyzeMode ? 'Selected Range P&L Curve' : 'Intraday PnL Curve'}</CardTitle>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   {/* Split swatch: the MTM curve is green above break-even, red below */}
@@ -584,7 +730,7 @@ export default function PnLTracker() {
                     <span className="h-full w-1/2 bg-green-500" />
                     <span className="h-full w-1/2 bg-red-500" />
                   </span>
-                  MTM PnL
+                  {isAnalyzeMode ? 'Range P&L' : 'MTM PnL'}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block w-3 h-3 rounded-full bg-yellow-500"></span>
@@ -594,6 +740,11 @@ export default function PnLTracker() {
             </div>
           </CardHeader>
           <CardContent>
+            {pointCount === 0 && (
+              <p className="mb-3 text-sm text-muted-foreground">
+                No P&L records are available for {isAnalyzeMode ? 'the selected dates' : 'today'}.
+              </p>
+            )}
             <div ref={chartContainerRef} className="relative" style={{ height: '500px' }} />
           </CardContent>
         </Card>
