@@ -194,6 +194,49 @@
     @media (min-width: 3000px) { :root { --z: 1.8; } }
     body { zoom: var(--z); height: calc(100vh / var(--z)); }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+    /* ---------- Phones and small tablets: one column, the page scrolls, big touch targets ---------- */
+    @media (max-width: 760px) {
+      :root { --z: 1; }
+      html, body { overflow: auto; height: auto; }
+      body { display: block; height: auto; font-size: 14px; }
+      .topbar { position: sticky; top: 0; z-index: 30; flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+      .brand { display: none; }
+      .topbar > .seg { order: 1; flex: 1 1 150px; min-width: 0; }
+      #rules-btn { padding: 0 10px; font-size: 12px; }
+      .topbar > .seg button { flex: 1; height: 36px; }
+      #rules-wrap { order: 2; }
+      .process { order: 4; flex: 1 1 100%; justify-content: center; height: 32px; }
+      .spacer { display: none; }
+      #risk { order: 3; flex: 1 1 100%; }
+      .risk-tile { width: 100%; grid-template-columns: 1fr 1fr auto; }
+      .popover { position: fixed; top: auto; left: 12px; right: 12px; width: auto; max-height: 75vh; overflow: auto; }
+      #risk-pop { top: 150px; } #rules-pop { top: 64px; }
+      .workspace { display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+      .panel { min-height: 0; }
+      .panel-body { overflow: visible; }
+      .panel-head { flex-wrap: wrap; padding: 12px; }
+      /* threads: compact table, swipe sideways for the rest */
+      #thread-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .threads { min-width: 560px; }
+      .threads td, .threads th { padding: 10px 8px; }
+      .switch { width: 42px; height: 24px; } .switch::after { width: 18px; height: 18px; } .switch:checked::after { transform: translateX(18px); }
+      /* automatic */
+      .sides { grid-template-columns: 1fr; padding: 12px; }
+      .auto-settings { margin: 0 12px 12px; }
+      .auto-grid { grid-template-columns: 1fr 1fr; }
+      /* option chain: own scroll area so the page stays usable */
+      #chain-scroll { overflow-y: auto; max-height: 70vh; }
+      .chain-tools { grid-template-columns: 1fr 1fr; }
+      .chain td { height: 44px; }
+      .cell-btn { width: 34px; height: 34px; font-size: 16px; }
+      .btn { height: 40px; }
+      .btn.small { height: 36px; }
+      input[type="number"], input[type="text"], select { height: 40px; font-size: 16px; }   /* 16px stops iOS zooming in */
+      .add-grid { grid-template-columns: 1fr; }
+      dialog { width: calc(100vw - 24px); }
+      .toast { right: 12px; left: 12px; max-width: none; }
+    }
   </style>
 </head>
 <body>
@@ -223,7 +266,7 @@
         <div class="pop-row" style="margin:0"><span class="muted" style="font-size:11.5px">Sells everything and stops all threads for the day.</span><button type="button" class="btn primary small" id="risk-save" disabled>Save</button></div>
       </div>
     </div>
-    <div class="risk">
+    <div class="risk" id="rules-wrap">
       <button type="button" class="btn" id="rules-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="rules-pop"><span id="rules-text">Rules</span><span class="chev" aria-hidden="true">▾</span></button>
       <div class="popover" id="rules-pop" role="dialog" aria-label="Strategy rules" hidden>
         <h3>Strategy rules</h3>
@@ -881,7 +924,8 @@
     });
 
     // ---------- option chain ----------
-    const visibleCount = () => Math.max(11, Math.min(31, Math.floor(($("#chain-scroll").clientHeight - 32) / 37)));
+    const visibleCount = () => matchMedia("(max-width: 760px)").matches ? 15
+      : Math.max(11, Math.min(31, Math.floor(($("#chain-scroll").clientHeight - 32) / 37)));
     function center() { return Number($("#chain-center").value) || Number(chain?.atm_strike) || 0; }
     function visibleRows() {
       if (!chain) return [];
